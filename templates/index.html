@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>優待クロス取引管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      min-height: 100vh;
+      padding-bottom: 120px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #4a86e8, #3b82f6);
+      color: white;
+      padding: 20px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    header h1 { font-size: 28px; font-weight: 700; }
+
+    .tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      display: flex;
+      border-top: 1px solid #e2e8f0;
+      z-index: 100;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    }
+    .tab-item {
+      flex: 1;
+      text-align: center;
+      padding: 20px 8px;
+      cursor: pointer;
+      color: #94a3b8;
+      font-size: 18px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .tab-item.active { color: #4a86e8; }
+    .tab-item .material-icons { display: block; font-size: 40px; margin-bottom: 8px; }
+
+    .view { display: none; padding: 16px; animation: fadeIn 0.3s; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #64748b;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .card-title .material-icons { font-size: 32px; color: #4a86e8; }
+
+    .form-group { margin-bottom: 22px; }
+    label {
+      display: block;
+      font-size: 20px;
+      color: #64748b;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 20px 18px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 22px;
+      background: #f8fafc;
+    }
+    input:focus, select:focus { outline: none; border-color: #4a86e8; background: white; }
+    .row { display: flex; gap: 14px; }
+    .row .form-group { flex: 1; }
+
+    .btn {
+      width: 100%;
+      padding: 22px;
+      border: none;
+      border-radius: 14px;
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary { background: #4a86e8; color: white; }
+    .btn-success { background: #10b981; color: white; }
+    .btn-secondary { background: #e2e8f0; color: #64748b; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-outline { background: transparent; border: 2px solid #e2e8f0; color: #64748b; }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .data-row:last-child { border-bottom: none; }
+    .data-label { color: #64748b; font-size: 20px; }
+    .data-value { font-weight: 600; font-size: 22px; }
+    .data-value.profit { color: #10b981; }
+    .data-value.loss { color: #ef4444; }
+
+    .trade-item {
+      background: white;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+      border-left: 6px solid #4a86e8;
+    }
+    .trade-item:active {
+      transform: scale(0.98);
+      box-shadow: 0 0 0 2px #4a86e8;
+    }
+    .trade-item.status-settled-item { border-left-color: #10b981; }
+    .trade-item.status-acquired-item { border-left-color: #f59e0b; }
+    .trade-item.status-none-item { border-left-color: #94a3b8; }
+
+    .trade-row-1 { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+    .trade-code { font-weight: 700; color: #1e293b; font-size: 28px; }
+    .trade-name {
+      color: #1e293b;
+      font-size: 24px;
+      font-weight: 600;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .trade-row-2 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .trade-badges { display: flex; align-items: center; gap: 10px; }
+    .trade-profit { font-weight: 700; font-size: 28px; }
+    .trade-row-3 { font-size: 20px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
+    .trade-month {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1d4ed8;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .trade-status { font-size: 20px; padding: 10px 18px; border-radius: 10px; font-weight: 700; }
+    .status-none { background: #f1f5f9; color: #94a3b8; }
+    .status-acquired { background: #fef3c7; color: #d97706; }
+    .status-settled { background: #dcfce7; color: #16a34a; }
+
+    .badge { display: inline-block; padding: 8px 16px; border-radius: 14px; font-size: 18px; font-weight: 600; }
+    .badge-settled { background: #dcfce7; color: #16a34a; }
+    .badge-pending { background: #fef3c7; color: #d97706; }
+
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .summary-item { background: white; border-radius: 14px; padding: 22px; text-align: center; }
+    .summary-label { font-size: 20px; color: #94a3b8; margin-bottom: 10px; }
+    .summary-value { font-size: 32px; font-weight: 700; }
+
+    .year-selector { display: flex; align-items: center; justify-content: center; gap: 30px; margin: 20px 0; }
+    .year-selector button {
+      background: #e2e8f0; border: none; width: 60px; height: 60px;
+      border-radius: 50%; cursor: pointer; font-size: 30px;
+    }
+    .year-selector span { font-weight: 700; font-size: 28px; }
+
+    .table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 20px; }
+    th, td { padding: 16px 12px; text-align: right; border-bottom: 1px solid #f1f5f9; }
+    th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 18px; }
+    th:first-child, td:first-child { text-align: left; }
+    .profit { color: #10b981; }
+    .loss { color: #ef4444; }
+
+    .loading { text-align: center; padding: 60px; color: #94a3b8; font-size: 22px; }
+    .spinner {
+      width: 50px; height: 50px;
+      border: 5px solid #e2e8f0; border-top-color: #4a86e8;
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 18px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%);
+      background: #1e293b; color: white; padding: 18px 32px;
+      border-radius: 12px; font-size: 20px; display: none; z-index: 200;
+    }
+    .toast.success { background: #10b981; }
+    .toast.error { background: #ef4444; }
+
+    .empty-state { text-align: center; padding: 60px 28px; color: #94a3b8; font-size: 22px; }
+    .empty-state .material-icons { font-size: 64px; margin-bottom: 18px; }
+
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 300; animation: fadeIn 0.2s;
+    }
+    .modal-overlay.active { display: flex; align-items: flex-end; }
+    .modal {
+      background: white; width: 100%; max-height: 90vh;
+      border-radius: 20px 20px 0 0; overflow: hidden; animation: slideUp 0.3s;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 24px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;
+    }
+    .modal-header h2 { font-size: 26px; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 40px; cursor: pointer; color: #94a3b8; }
+    .modal-body { padding: 24px; overflow-y: auto; max-height: calc(90vh - 80px); }
+    .modal-section { margin-bottom: 26px; }
+    .modal-section-title {
+      font-size: 22px; font-weight: 700; color: #4a86e8;
+      margin-bottom: 16px; padding-bottom: 10px; border-bottom: 3px solid #4a86e8;
+    }
+    .modal-actions { display: flex; gap: 14px; margin-top: 24px; }
+    .modal-actions .btn { flex: 1; }
+
+    .filter-bar {
+      display: flex; gap: 12px; margin: 18px 0 16px;
+      overflow-x: auto; padding-bottom: 8px;
+    }
+    .filter-btn {
+      padding: 16px 28px; border: none; border-radius: 28px;
+      font-size: 20px; font-weight: 600; cursor: pointer;
+      white-space: nowrap; background: #e2e8f0; color: #64748b;
+    }
+    .filter-btn.active { background: #4a86e8; color: white; }
+
+    .search-box { position: relative; margin-bottom: 16px; }
+    .search-box input {
+      width: 100%; padding: 18px 18px 18px 56px;
+      border: 2px solid #e2e8f0; border-radius: 16px; font-size: 22px; background: white;
+    }
+    .search-box input:focus { border-color: #4a86e8; outline: none; }
+    .search-box .material-icons {
+      position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+      color: #94a3b8; font-size: 30px;
+    }
+    .search-box .clear-btn {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: #e2e8f0; border: none; border-radius: 50%;
+      width: 36px; height: 36px; cursor: pointer; display: none;
+      align-items: center; justify-content: center;
+    }
+    .search-box .clear-btn .material-icons { position: static; transform: none; font-size: 24px; color: #64748b; }
+
+    .month-filter {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+      padding: 16px 20px; background: white; border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .month-filter label { font-size: 20px; color: #64748b; font-weight: 600; margin: 0; white-space: nowrap; }
+    .month-filter select { flex: 1; padding: 16px 18px; font-size: 22px; border-radius: 12px; }
+
+    .month-group-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 18px 22px; margin: 20px 0 12px;
+      background: linear-gradient(135deg, #4a86e8, #3b82f6);
+      color: white; border-radius: 14px; font-weight: 700; font-size: 24px;
+    }
+    .month-group-header:first-child { margin-top: 0; }
+    .month-group-header .count {
+      background: rgba(255,255,255,0.2); padding: 8px 18px;
+      border-radius: 16px; font-size: 20px;
+    }
+
+    .checkbox-wrapper { display: flex; align-items: center; gap: 14px; }
+    .checkbox-wrapper input[type="checkbox"] { width: 32px; height: 32px; }
+    .checkbox-wrapper label { font-size: 22px; }
+
+    #v-input .card, #v-pl .card, #v-settings .card { padding: 28px; }
+    #v-input .card-title, #v-pl .card-title, #v-settings .card-title { font-size: 28px; margin-bottom: 24px; }
+    #v-input .card-title .material-icons, #v-pl .card-title .material-icons, #v-settings .card-title .material-icons { font-size: 36px; }
+    #v-input .form-group, #v-pl .form-group, #v-settings .form-group { margin-bottom: 28px; }
+    #v-input label, #v-pl label, #v-settings label { font-size: 22px; margin-bottom: 12px; }
+    #v-input input, #v-input select, #v-pl input, #v-pl select, #v-settings input, #v-settings select {
+      padding: 24px 20px; font-size: 26px; border-radius: 14px;
+    }
+    #v-input .btn, #v-pl .btn, #v-settings .btn { padding: 26px; font-size: 26px; margin-top: 10px; }
+    #v-input p, #v-pl p, #v-settings p { font-size: 18px !important; margin-bottom: 20px !important; }
+    #v-pl .data-row, #v-settings .data-row { padding: 18px 0; }
+    #v-pl .data-label, #v-settings .data-label { font-size: 22px; }
+    #v-pl .data-value, #v-settings .data-value { font-size: 24px; }
+    #v-pl .year-selector span { font-size: 30px; }
+    #v-pl .year-selector button { width: 64px; height: 64px; font-size: 32px; }
+    #v-pl table { font-size: 22px; }
+    #v-pl th { font-size: 20px; padding: 18px 12px; }
+    #v-pl td { padding: 18px 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>優待クロス取引管理</h1>
+  </header>
+
+  <!-- 銘柄登録タブ -->
+  <div id="v-input" class="view active">
+    <div class="card">
+      <div class="card-title"><span class="material-icons">add_circle</span>優待銘柄を登録</div>
+      <p style="font-size: 14px; color: #94a3b8; margin-bottom: 15px;">
+        優待銘柄のマスター情報を登録します。取得・決済情報は一覧から入力してください。
+      </p>
+
+      <div class="row">
+        <div class="form-group">
+          <label>銘柄コード *</label>
+          <input type="text" id="f-code" placeholder="例: 9831" maxlength="4">
+        </div>
+        <div class="form-group">
+          <label>権利月 *</label>
+          <select id="f-kenri-month">
+            <option value="">選択</option>
+            <option value="1">1月</option><option value="2">2月</option>
+            <option value="3">3月</option><option value="4">4月</option>
+            <option value="5">5月</option><option value="6">6月</option>
+            <option value="7">7月</option><option value="8">8月</option>
+            <option value="9">9月</option><option value="10">10月</option>
+            <option value="11">11月</option><option value="12">12月</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>優待内容</label>
+        <input type="text" id="f-benefit" placeholder="例: お買物優待券 500円x6枚">
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>優待価値（円）</label>
+          <input type="number" id="f-benefit-value" placeholder="3000">
+        </div>
+        <div class="form-group">
+          <label>備考</label>
+          <input type="text" id="f-note" placeholder="メモ">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveMaster()">登録する</button>
+    </div>
+  </div>
+
+  <!-- 取引一覧タブ -->
+  <div id="v-list" class="view">
+    <div class="summary-grid" id="summary-cards"></div>
+
+    <div class="search-box">
+      <span class="material-icons">search</span>
+      <input type="text" id="search-input" placeholder="銘柄コード or 銘柄名で検索" oninput="onSearchInput(this)">
+      <button class="clear-btn" id="search-clear" onclick="clearSearch()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="month-filter">
+      <label>権利月:</label>
+      <select id="month-select" onchange="onMonthFilterChange(this.value)">
+        <option value="all">すべての月</option>
+        <option value="1">1月</option><option value="2">2月</option>
+        <option value="3">3月</option><option value="4">4月</option>
+        <option value="5">5月</option><option value="6">6月</option>
+        <option value="7">7月</option><option value="8">8月</option>
+        <option value="9">9月</option><option value="10">10月</option>
+        <option value="11">11月</option><option value="12">12月</option>
+      </select>
+    </div>
+
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterTrades('all', this)">全て</button>
+      <button class="filter-btn" onclick="filterTrades('none', this)">未取得</button>
+      <button class="filter-btn" onclick="filterTrades('acquired', this)">取得済</button>
+      <button class="filter-btn" onclick="filterTrades('settled', this)">決済済</button>
+    </div>
+
+    <div id="trade-list"></div>
+  </div>
+
+  <!-- 損益計算タブ -->
+  <div id="v-pl" class="view">
+    <div class="card">
+      <div class="card-title"><span class="material-icons">analytics</span>損益サマリー（決済済み）</div>
+      <div id="pl-summary"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="material-icons">calendar_month</span>権利月別一覧</div>
+      <div class="year-selector">
+        <button onclick="changeYear(-1)">&lt;</button>
+        <span id="year-display"></span>
+        <button onclick="changeYear(1)">&gt;</button>
+      </div>
+      <div class="table-wrapper">
+        <table id="monthly-table"></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="material-icons">date_range</span>年別一覧</div>
+      <div class="table-wrapper">
+        <table id="yearly-table"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 設定タブ -->
+  <div id="v-settings" class="view">
+    <div class="card">
+      <div class="card-title"><span class="material-icons">settings</span>設定</div>
+      <p style="font-size: 15px; color: #94a3b8; margin-bottom: 15px;">
+        デフォルト設定と証券会社一覧を編集できます。
+      </p>
+
+      <div class="form-group">
+        <label>デフォルト証券会社</label>
+        <input type="text" id="s-default-broker" placeholder="SBI証券">
+      </div>
+      <div class="form-group">
+        <label>デフォルト株数</label>
+        <input type="number" id="s-default-qty" placeholder="100">
+      </div>
+      <div class="form-group">
+        <label>証券会社一覧（カンマ区切り）</label>
+        <input type="text" id="s-broker-list" placeholder="SBI証券,楽天証券,マネックス証券">
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">設定を保存</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="material-icons">refresh</span>データ更新</div>
+      <button class="btn btn-success" onclick="loadData()">最新データを取得</button>
+    </div>
+  </div>
+
+  <!-- タブバー -->
+  <nav class="tab-bar">
+    <div class="tab-item active" onclick="switchTab('input', this)">
+      <span class="material-icons">add_box</span>登録
+    </div>
+    <div class="tab-item" onclick="switchTab('list', this)">
+      <span class="material-icons">list_alt</span>一覧
+    </div>
+    <div class="tab-item" onclick="switchTab('pl', this)">
+      <span class="material-icons">trending_up</span>損益
+    </div>
+    <div class="tab-item" onclick="switchTab('settings', this)">
+      <span class="material-icons">settings</span>設定
+    </div>
+  </nav>
+
+  <!-- 詳細モーダル -->
+  <div id="modal-overlay" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="modal-title">銘柄詳細</h2>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <div class="modal-section-title">銘柄情報</div>
+          <div class="row">
+            <div class="form-group">
+              <label>銘柄コード</label>
+              <input type="text" id="m-code" readonly style="background:#f1f5f9">
+            </div>
+            <div class="form-group">
+              <label>銘柄名</label>
+              <input type="text" id="m-name" readonly style="background:#f1f5f9">
+            </div>
+          </div>
+          <div class="row">
+            <div class="form-group">
+              <label>権利月</label>
+              <select id="m-kenri-month">
+                <option value="">選択</option>
+                <option value="1">1月</option><option value="2">2月</option>
+                <option value="3">3月</option><option value="4">4月</option>
+                <option value="5">5月</option><option value="6">6月</option>
+                <option value="7">7月</option><option value="8">8月</option>
+                <option value="9">9月</option><option value="10">10月</option>
+                <option value="11">11月</option><option value="12">12月</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>優待価値（円）</label>
+              <input type="number" id="m-benefit-value">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>優待内容</label>
+            <input type="text" id="m-benefit">
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">取得情報</div>
+          <div class="row">
+            <div class="form-group">
+              <label>取得日</label>
+              <input type="date" id="m-trade-date">
+            </div>
+            <div class="form-group">
+              <label>証券会社</label>
+              <select id="m-broker"></select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="form-group">
+              <label>株数</label>
+              <input type="number" id="m-qty" placeholder="100">
+            </div>
+            <div class="form-group">
+              <label>売単価</label>
+              <input type="number" id="m-sell-price" step="0.1">
+            </div>
+            <div class="form-group">
+              <label>買単価</label>
+              <input type="number" id="m-buy-price" step="0.1">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">決済情報</div>
+          <div class="row">
+            <div class="form-group">
+              <label>現引</label>
+              <input type="number" id="m-genriki" value="0">
+            </div>
+            <div class="form-group">
+              <label>現渡</label>
+              <input type="number" id="m-genwatashi" value="0">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>備考</label>
+            <input type="text" id="m-note">
+          </div>
+          <div class="form-group">
+            <div class="checkbox-wrapper">
+              <input type="checkbox" id="m-settled">
+              <label for="m-settled" style="margin:0">決済済み</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-danger" onclick="deleteCurrentTrade()">削除</button>
+          <button class="btn btn-primary" onclick="saveCurrentTrade()">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let allTrades = [];
+    let currentFilter = 'all';
+    let currentMonthFilter = 'all';
+    let currentSearchQuery = '';
+    let selectedYear = new Date().getFullYear();
+    let settings = {};
+    let currentTradeRow = null;
+
+    window.onload = function() {
+      loadSettings();
+      loadData();
+    };
+
+    // ------------------------------------------------------------------
+    // Tab
+    // ------------------------------------------------------------------
+
+    function switchTab(tabId, el) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+      document.getElementById('v-' + tabId).classList.add('active');
+      el.classList.add('active');
+
+      if (tabId === 'list') {
+        if (allTrades.length === 0) loadData();
+        else renderTradeList();
+      }
+      if (tabId === 'pl') loadPLData();
+    }
+
+    // ------------------------------------------------------------------
+    // Settings
+    // ------------------------------------------------------------------
+
+    function loadSettings() {
+      api('/api/settings').then(s => {
+        settings = s || {};
+        populateBrokerSelect('m-broker');
+        fillSettingsForm();
+      }).catch(err => console.error('設定取得エラー:', err));
+    }
+
+    function fillSettingsForm() {
+      document.getElementById('s-default-broker').value = settings['デフォルト証券会社'] || '';
+      document.getElementById('s-default-qty').value = settings['デフォルト株数'] || 100;
+      document.getElementById('s-broker-list').value = (settings['証券会社一覧'] || []).join(',');
+    }
+
+    function saveSettings() {
+      const brokerListRaw = document.getElementById('s-broker-list').value;
+      const data = {
+        'デフォルト証券会社': document.getElementById('s-default-broker').value.trim(),
+        'デフォルト株数': document.getElementById('s-default-qty').value,
+        '証券会社一覧': brokerListRaw
+      };
+      api('/api/settings', { method: 'POST', body: data }).then(result => {
+        if (result.success) {
+          showToast('設定を保存しました', 'success');
+          loadSettings();
+        } else {
+          showToast('保存に失敗しました', 'error');
+        }
+      }).catch(() => showToast('通信エラー', 'error'));
+    }
+
+    function populateBrokerSelect(selectId) {
+      const select = document.getElementById(selectId);
+      const brokers = settings['証券会社一覧'] || ['SBI証券', '楽天証券', 'マネックス証券'];
+      select.innerHTML = '<option value="">選択</option>' +
+        brokers.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+    }
+
+    // ------------------------------------------------------------------
+    // Trade list
+    // ------------------------------------------------------------------
+
+    function loadData() {
+      showLoading('trade-list');
+      showLoading('summary-cards');
+
+      api('/api/trades').then(trades => {
+        allTrades = trades || [];
+        renderTradeList();
+        renderSummary();
+        showToast(allTrades.length + '件取得', 'success');
+      }).catch(() => {
+        document.getElementById('trade-list').innerHTML =
+          '<div class="empty-state"><span class="material-icons">error_outline</span><p>データ取得エラー</p></div>';
+        document.getElementById('summary-cards').innerHTML = '';
+      });
+    }
+
+    function renderSummary() {
+      const settled = allTrades.filter(t => t['決済済み'] === true);
+      const acquired = allTrades.filter(t => t['取得日'] && t['決済済み'] !== true);
+      const none = allTrades.filter(t => !t['取得日']);
+      const totalProfit = settled.reduce((sum, t) => sum + (parseFloat(t['利益']) || 0), 0);
+
+      document.getElementById('summary-cards').innerHTML = `
+        <div class="summary-item">
+          <div class="summary-label">全銘柄</div>
+          <div class="summary-value">${allTrades.length}件</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">未取得</div>
+          <div class="summary-value">${none.length}件</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">取得済</div>
+          <div class="summary-value">${acquired.length}件</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">利益合計</div>
+          <div class="summary-value ${totalProfit >= 0 ? 'profit' : 'loss'}">¥${totalProfit.toLocaleString()}</div>
+        </div>
+      `;
+    }
+
+    function onSearchInput(input) {
+      currentSearchQuery = input.value.trim().toLowerCase();
+      document.getElementById('search-clear').style.display = currentSearchQuery ? 'flex' : 'none';
+      renderTradeList();
+    }
+
+    function clearSearch() {
+      document.getElementById('search-input').value = '';
+      currentSearchQuery = '';
+      document.getElementById('search-clear').style.display = 'none';
+      renderTradeList();
+    }
+
+    function onMonthFilterChange(month) {
+      currentMonthFilter = month;
+      renderTradeList();
+    }
+
+    function renderTradeList() {
+      let trades = allTrades;
+
+      if (currentSearchQuery) {
+        trades = trades.filter(t => {
+          const code = (t['コード'] || '').toLowerCase();
+          const name = (t['銘柄'] || '').toLowerCase();
+          return code.includes(currentSearchQuery) || name.includes(currentSearchQuery);
+        });
+      }
+
+      if (currentMonthFilter !== 'all') {
+        const month = parseInt(currentMonthFilter);
+        trades = trades.filter(t => t['権利月'] === month);
+      }
+
+      if (currentFilter === 'none') {
+        trades = trades.filter(t => !t['取得日']);
+      } else if (currentFilter === 'acquired') {
+        trades = trades.filter(t => t['取得日'] && t['決済済み'] !== true);
+      } else if (currentFilter === 'settled') {
+        trades = trades.filter(t => t['決済済み'] === true);
+      }
+
+      if (trades.length === 0) {
+        document.getElementById('trade-list').innerHTML = `
+          <div class="empty-state">
+            <span class="material-icons">inbox</span>
+            <p>該当する取引データがありません</p>
+          </div>`;
+        return;
+      }
+
+      if (currentMonthFilter === 'all') {
+        const grouped = {};
+        trades.forEach(t => {
+          const month = t['権利月'] || 0;
+          if (!grouped[month]) grouped[month] = [];
+          grouped[month].push(t);
+        });
+        const sortedMonths = Object.keys(grouped).map(Number).sort((a, b) => {
+          if (a === 0) return 1;
+          if (b === 0) return -1;
+          return a - b;
+        });
+        let html = '';
+        sortedMonths.forEach(month => {
+          const monthTrades = grouped[month];
+          const monthLabel = month === 0 ? '未設定' : month + '月';
+          html += `<div class="month-group-header">
+            <span>${monthLabel}</span>
+            <span class="count">${monthTrades.length}件</span>
+          </div>`;
+          html += monthTrades.map(t => renderTradeItem(t)).join('');
+        });
+        document.getElementById('trade-list').innerHTML = html;
+      } else {
+        document.getElementById('trade-list').innerHTML = trades.map(t => renderTradeItem(t)).join('');
+      }
+    }
+
+    function renderTradeItem(t) {
+      let statusClass = 'status-none', statusText = '未取得', itemClass = 'status-none-item';
+      if (t['決済済み']) {
+        statusClass = 'status-settled'; statusText = '決済済'; itemClass = 'status-settled-item';
+      } else if (t['取得日']) {
+        statusClass = 'status-acquired'; statusText = '取得済'; itemClass = 'status-acquired-item';
+      }
+
+      return `
+      <div class="trade-item ${itemClass}" onclick="openModal(${t['行番号']})">
+        <div class="trade-row-1">
+          <span class="trade-code">${escapeHtml(t['コード'])}</span>
+          <span class="trade-name">${escapeHtml(t['銘柄'] || '')}</span>
+        </div>
+        <div class="trade-row-2">
+          <div class="trade-badges">
+            ${t['権利月'] ? `<span class="trade-month">${t['権利月']}月</span>` : ''}
+            <span class="trade-status ${statusClass}">${statusText}</span>
+          </div>
+          <span class="trade-profit ${(t['利益'] || 0) >= 0 ? 'profit' : 'loss'}">
+            ${t['決済済み'] ? '¥' + (t['利益'] || 0).toLocaleString() : '¥' + (t['優待価値'] || 0).toLocaleString()}
+          </span>
+        </div>
+        <div class="trade-row-3">
+          <span>${escapeHtml(t['優待内容'] || '-')} / ${t['株数'] || '-'}株</span>
+          ${t['証券会社'] ? `<span>${escapeHtml(t['証券会社'])}</span>` : ''}
+        </div>
+      </div>`;
+    }
+
+    function filterTrades(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTradeList();
+    }
+
+    // ------------------------------------------------------------------
+    // Modal
+    // ------------------------------------------------------------------
+
+    function openModal(rowNum) {
+      currentTradeRow = rowNum;
+      const trade = allTrades.find(t => t['行番号'] === rowNum);
+      if (!trade) return;
+
+      document.getElementById('m-code').value = trade['コード'] || '';
+      document.getElementById('m-name').value = trade['銘柄'] || '';
+      document.getElementById('m-kenri-month').value = trade['権利月'] || '';
+      document.getElementById('m-benefit').value = trade['優待内容'] || '';
+      document.getElementById('m-benefit-value').value = trade['優待価値'] || '';
+      document.getElementById('m-trade-date').value = trade['取得日'] ? formatDate(trade['取得日']) : '';
+      document.getElementById('m-qty').value = trade['株数'] || '';
+      document.getElementById('m-sell-price').value = trade['売単価'] || '';
+      document.getElementById('m-buy-price').value = trade['買単価'] || '';
+      document.getElementById('m-genriki').value = trade['現引'] || 0;
+      document.getElementById('m-genwatashi').value = trade['現渡'] || 0;
+      document.getElementById('m-broker').value = trade['証券会社'] || '';
+      document.getElementById('m-note').value = trade['備考'] || '';
+      document.getElementById('m-settled').checked = trade['決済済み'] === true;
+
+      document.getElementById('modal-title').textContent = `${trade['コード']} ${trade['銘柄'] || ''}`;
+      document.getElementById('modal-overlay').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('active');
+      currentTradeRow = null;
+    }
+
+    function closeModalOnOverlay(event) {
+      if (event.target === document.getElementById('modal-overlay')) closeModal();
+    }
+
+    function saveCurrentTrade() {
+      if (!currentTradeRow) return;
+
+      const data = {
+        '権利月': document.getElementById('m-kenri-month').value,
+        '優待内容': document.getElementById('m-benefit').value,
+        '優待価値': parseFloat(document.getElementById('m-benefit-value').value) || 0,
+        '取得日': document.getElementById('m-trade-date').value,
+        '株数': parseInt(document.getElementById('m-qty').value) || '',
+        '売単価': parseFloat(document.getElementById('m-sell-price').value) || '',
+        '買単価': parseFloat(document.getElementById('m-buy-price').value) || '',
+        '現引': parseFloat(document.getElementById('m-genriki').value) || 0,
+        '現渡': parseFloat(document.getElementById('m-genwatashi').value) || 0,
+        '証券会社': document.getElementById('m-broker').value,
+        '備考': document.getElementById('m-note').value,
+        '決済済み': document.getElementById('m-settled').checked
+      };
+
+      api(`/api/trades/${currentTradeRow}`, { method: 'PUT', body: data }).then(result => {
+        if (result && result.success) {
+          showToast('保存しました', 'success');
+          closeModal();
+          loadData();
+        } else {
+          showToast(result.message || 'エラー', 'error');
+        }
+      }).catch(() => showToast('通信エラー', 'error'));
+    }
+
+    function deleteCurrentTrade() {
+      if (!currentTradeRow) return;
+      if (!confirm('この銘柄を削除しますか？')) return;
+
+      api(`/api/trades/${currentTradeRow}`, { method: 'DELETE' }).then(result => {
+        if (result && result.success) {
+          showToast('削除しました', 'success');
+          closeModal();
+          loadData();
+        } else {
+          showToast(result.message || 'エラー', 'error');
+        }
+      }).catch(() => showToast('通信エラー', 'error'));
+    }
+
+    // ------------------------------------------------------------------
+    // P&L
+    // ------------------------------------------------------------------
+
+    function loadPLData() {
+      api('/api/pl').then(pl => {
+        document.getElementById('pl-summary').innerHTML = `
+          <div class="data-row">
+            <span class="data-label">優待価値合計</span>
+            <span class="data-value">¥${(pl['優待価値合計'] || 0).toLocaleString()}</span>
+          </div>
+          <div class="data-row">
+            <span class="data-label">差益合計</span>
+            <span class="data-value ${(pl['差益合計'] || 0) >= 0 ? 'profit' : 'loss'}">¥${(pl['差益合計'] || 0).toLocaleString()}</span>
+          </div>
+          <div class="data-row">
+            <span class="data-label">手数料合計</span>
+            <span class="data-value">¥${(pl['手数料合計'] || 0).toLocaleString()}</span>
+          </div>
+          <div class="data-row" style="border-top: 2px solid #e2e8f0; padding-top: 12px; margin-top: 5px;">
+            <span class="data-label" style="font-weight: 700;">利益合計</span>
+            <span class="data-value ${(pl['利益合計'] || 0) >= 0 ? 'profit' : 'loss'}" style="font-size: 18px;">¥${(pl['利益合計'] || 0).toLocaleString()}</span>
+          </div>
+          <div class="data-row">
+            <span class="data-label">決済済み / 未決済</span>
+            <span class="data-value">${pl['決済済み件数'] || 0}件 / ${pl['未決済件数'] || 0}件</span>
+          </div>
+        `;
+      });
+
+      loadMonthlyPL();
+      loadYearlyPL();
+    }
+
+    function changeYear(delta) {
+      selectedYear += delta;
+      loadMonthlyPL();
+    }
+
+    function loadMonthlyPL() {
+      document.getElementById('year-display').textContent = selectedYear + '年';
+      api(`/api/pl/monthly?year=${selectedYear}`).then(data => drawMonthlyTable(data));
+    }
+
+    function drawMonthlyTable(data) {
+      let html = '<tr><th>権利月</th><th>取引数</th><th>決済済</th><th>未決済</th><th>優待価値</th><th>利益</th></tr>';
+      let totalCount = 0, totalSettled = 0, totalPending = 0, totalBenefit = 0, totalProfit = 0;
+
+      data.forEach(d => {
+        totalCount += d['取引数'];
+        totalSettled += d['決済済み'];
+        totalPending += d['未決済'];
+        totalBenefit += d['優待価値'];
+        totalProfit += d['利益'];
+        const profitClass = d['利益'] >= 0 ? 'profit' : 'loss';
+        const rowStyle = d['取引数'] > 0 ? '' : 'color:#ccc;';
+        html += `<tr style="${rowStyle}">
+          <td>${d['月']}月</td>
+          <td>${d['取引数']}</td>
+          <td>${d['決済済み']}</td>
+          <td>${d['未決済']}</td>
+          <td>¥${d['優待価値'].toLocaleString()}</td>
+          <td class="${profitClass}">¥${d['利益'].toLocaleString()}</td>
+        </tr>`;
+      });
+
+      const totalProfitClass = totalProfit >= 0 ? 'profit' : 'loss';
+      html += `<tr style="font-weight:bold; background:#f0f9ff;">
+        <td>合計</td>
+        <td>${totalCount}</td>
+        <td>${totalSettled}</td>
+        <td>${totalPending}</td>
+        <td>¥${totalBenefit.toLocaleString()}</td>
+        <td class="${totalProfitClass}">¥${totalProfit.toLocaleString()}</td>
+      </tr>`;
+
+      document.getElementById('monthly-table').innerHTML = html;
+    }
+
+    function loadYearlyPL() {
+      api('/api/pl/yearly').then(data => drawYearlyTable(data));
+    }
+
+    function drawYearlyTable(data) {
+      if (data.length === 0) {
+        document.getElementById('yearly-table').innerHTML =
+          '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;">データなし</td></tr>';
+        return;
+      }
+      let html = '<tr><th>年</th><th>取引数</th><th>優待価値</th><th>手数料</th><th>利益</th></tr>';
+      data.forEach(d => {
+        const profitClass = d['利益'] >= 0 ? 'profit' : 'loss';
+        html += `<tr>
+          <td>${d['年']}年</td>
+          <td>${d['取引数']}</td>
+          <td>¥${d['優待価値'].toLocaleString()}</td>
+          <td>¥${d['手数料'].toLocaleString()}</td>
+          <td class="${profitClass}">¥${d['利益'].toLocaleString()}</td>
+        </tr>`;
+      });
+      document.getElementById('yearly-table').innerHTML = html;
+    }
+
+    // ------------------------------------------------------------------
+    // Registration
+    // ------------------------------------------------------------------
+
+    function saveMaster() {
+      const code = document.getElementById('f-code').value.trim();
+      const kenriMonth = document.getElementById('f-kenri-month').value;
+
+      if (!code || !/^\d{4}$/.test(code)) {
+        showToast('4桁の銘柄コードを入力してください', 'error');
+        return;
+      }
+      if (!kenriMonth) {
+        showToast('権利月を選択してください', 'error');
+        return;
+      }
+
+      const data = {
+        'コード': code,
+        '権利月': parseInt(kenriMonth),
+        '優待内容': document.getElementById('f-benefit').value.trim(),
+        '優待価値': parseFloat(document.getElementById('f-benefit-value').value) || 0,
+        '備考': document.getElementById('f-note').value.trim()
+      };
+
+      api('/api/trades', { method: 'POST', body: data }).then(result => {
+        if (result && result.success) {
+          showToast('登録完了: ' + (result['銘柄名'] || code), 'success');
+          clearForm();
+          loadData();
+        } else {
+          showToast(result.message || 'エラー', 'error');
+        }
+      }).catch(() => showToast('通信エラー', 'error'));
+    }
+
+    function clearForm() {
+      ['f-code','f-kenri-month','f-benefit','f-benefit-value','f-note'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    function api(url, opts = {}) {
+      const fetchOpts = { method: opts.method || 'GET', headers: {} };
+      if (opts.body !== undefined) {
+        fetchOpts.headers['Content-Type'] = 'application/json';
+        fetchOpts.body = JSON.stringify(opts.body);
+      }
+      return fetch(url, fetchOpts).then(r => r.json());
+    }
+
+    function formatDate(dateValue) {
+      if (!dateValue) return '';
+      const d = new Date(dateValue);
+      if (isNaN(d.getTime())) return '';
+      return d.toISOString().split('T')[0];
+    }
+
+    function showLoading(targetId) {
+      document.getElementById(targetId).innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <div>読み込み中...</div>
+        </div>`;
+    }
+
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast ' + (type || '');
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2500);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text).replace(/[&<>"']/g, m =>
+        ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' })[m]
+      );
+    }
+  </script>
+</body>
+</html>
