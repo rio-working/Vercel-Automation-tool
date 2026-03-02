@@ -25,7 +25,7 @@ def _get_ws(sheet_name: str):
         scopes=SCOPES,
     )
     client = gspread.authorize(creds)
-    ss = client.open_by_id(os.environ["SPREADSHEET_ID"])
+    ss = client.open_by_key(os.environ["SPREADSHEET_ID"])
     return ss.worksheet(sheet_name)
 
 
