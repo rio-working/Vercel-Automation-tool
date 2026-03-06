@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workspace Next</title>
+<style>
+/* =============================================
+   CSS変数 & テーマ
+============================================= */
+:root {
+  --pale-blue:    #dbeafe;
+  --sage-green:   #d1fae5;
+  --sakura-pink:  #fce7f3;
+  --muted-purple: #ede9fe;
+  --peach:        #ffedd5;
+  --sky-mint:     #cffafe;
+  --accent-blue:  #3b82f6;
+  --accent-green: #10b981;
+  --accent-pink:  #ec4899;
+  --accent-purple:#8b5cf6;
+  --accent-orange:#f97316;
+  --text-main:    #1e293b;
+  --text-sub:     #64748b;
+  --bg-base:      #f0f4f8;
+  --bg-card:      rgba(255,255,255,0.65);
+  --border:       rgba(255,255,255,0.8);
+  --shadow:       0 4px 24px rgba(0,0,0,0.08);
+  --blur:         blur(12px);
+  --radius:       16px;
+  --sidebar-w:    220px;
+}
+[data-theme="dark"] {
+  --text-main:  #e2e8f0;
+  --text-sub:   #94a3b8;
+  --bg-base:    #0f172a;
+  --bg-card:    rgba(30,41,59,0.75);
+  --border:     rgba(255,255,255,0.1);
+  --shadow:     0 4px 24px rgba(0,0,0,0.4);
+  --pale-blue:  #1e3a5f;
+  --sage-green: #14402e;
+  --sakura-pink:#4a1942;
+  --muted-purple:#2d1b69;
+  --peach:      #431c06;
+  --sky-mint:   #0c3d40;
+}
+
+/* =============================================
+   リセット & ベース
+============================================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+  background: var(--bg-base);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  overflow: hidden;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* =============================================
+   サイドバー
+============================================= */
+#sidebar {
+  width: var(--sidebar-w);
+  height: 100vh;
+  background: var(--bg-card);
+  backdrop-filter: var(--blur);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 12px;
+  gap: 4px;
+  position: fixed;
+  left: 0; top: 0;
+  z-index: 100;
+  overflow-y: auto;
+}
+.sidebar-logo {
+  font-size: 18px;
+  font-weight: 700;
+  padding: 8px 12px 16px;
+  color: var(--accent-blue);
+  letter-spacing: -0.5px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-sub);
+  transition: all 0.15s;
+  position: relative;
+  user-select: none;
+}
+.nav-item:hover { background: var(--bg-card); color: var(--text-main); }
+.nav-item.active {
+  background: var(--accent-blue);
+  color: #fff;
+}
+.nav-item .icon { font-size: 18px; flex-shrink: 0; }
+.nav-dot {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent-pink);
+  display: none;
+}
+.nav-dot.show { display: block; }
+
+.sidebar-bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+.theme-toggle:hover { color: var(--text-main); }
+
+/* =============================================
+   メインエリア
+============================================= */
+#main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 28px;
+}
+
+/* =============================================
+   ウィジェット共通
+============================================= */
+.widget { display: none; }
+.widget.active { display: block; }
+
+.card {
+  background: var(--bg-card);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* =============================================
+   スケルトンスクリーン
+============================================= */
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, rgba(255,255,255,0.3) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 8px;
+  height: 16px;
+  margin-bottom: 8px;
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* =============================================
+   ToDo ウィジェット
+============================================= */
+.todo-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.todo-input-row input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.todo-input-row input:focus { border-color: var(--accent-blue); }
+.btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.btn-primary { background: var(--accent-blue); color: #fff; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-ghost { background: transparent; color: var(--text-sub); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--bg-card); color: var(--text-main); }
+.btn-danger { background: #ef4444; color: #fff; }
+.btn-danger:hover { opacity: 0.85; }
+
+.todo-list { display: flex; flex-direction: column; gap: 8px; }
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.4);
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+[data-theme="dark"] .todo-item { background: rgba(255,255,255,0.05); }
+.todo-item:hover { border-color: var(--accent-blue); }
+.todo-item.done .todo-text { text-decoration: line-through; color: var(--text-sub); }
+.todo-text { flex: 1; font-size: 14px; }
+.priority-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.priority-高 { background: #fee2e2; color: #dc2626; }
+.priority-中 { background: #fef9c3; color: #ca8a04; }
+.priority-低 { background: #dcfce7; color: #16a34a; }
+[data-theme="dark"] .priority-高 { background: #7f1d1d; color: #fca5a5; }
+[data-theme="dark"] .priority-中 { background: #78350f; color: #fde68a; }
+[data-theme="dark"] .priority-低 { background: #14532d; color: #86efac; }
+
+.effort-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--muted-purple);
+  color: var(--accent-purple);
+  white-space: nowrap;
+}
+.todo-check {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.todo-check:hover { border-color: var(--accent-green); }
+.todo-check.checked { background: var(--accent-green); border-color: var(--accent-green); color: #fff; font-size: 11px; }
+.todo-del-btn { background: none; border: none; color: var(--text-sub); cursor: pointer; font-size: 16px; padding: 2px 4px; }
+.todo-del-btn:hover { color: #ef4444; }
+
+/* =============================================
+   アジェンダ ウィジェット
+============================================= */
+.agenda-list { display: flex; flex-direction: column; gap: 10px; }
+.agenda-item {
+  display: flex;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.4);
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+[data-theme="dark"] .agenda-item { background: rgba(255,255,255,0.05); }
+.agenda-time {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  min-width: 52px;
+  flex-shrink: 0;
+}
+.agenda-title { font-size: 14px; font-weight: 600; }
+.agenda-loc { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+.focus-suggestion {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--sage-green);
+  border: 1px solid rgba(16,185,129,0.2);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* =============================================
+   AI壁打ち ウィジェット
+============================================= */
+.chat-messages {
+  min-height: 300px;
+  max-height: 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-right: 4px;
+}
+.chat-msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.chat-msg.user { flex-direction: row-reverse; }
+.chat-bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.chat-msg.ai .chat-bubble {
+  background: var(--pale-blue);
+  color: var(--text-main);
+  border-bottom-left-radius: 4px;
+}
+.chat-msg.user .chat-bubble {
+  background: var(--accent-blue);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-avatar { font-size: 22px; flex-shrink: 0; }
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+}
+.chat-input-row textarea {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 14px;
+  resize: none;
+  height: 60px;
+  outline: none;
+  font-family: inherit;
+}
+.chat-input-row textarea:focus { border-color: var(--accent-blue); }
+
+/* =============================================
+   日報 ウィジェット
+============================================= */
+.journal-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.7;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 12px;
+}
+.journal-textarea:focus { border-color: var(--accent-blue); }
+.journal-list { display: flex; flex-direction: column; gap: 10px; }
+.journal-entry {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.4);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+[data-theme="dark"] .journal-entry { background: rgba(255,255,255,0.05); }
+.journal-entry:hover { border-color: var(--accent-blue); }
+.journal-date { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
+.journal-preview { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.journal-btns { display: flex; gap: 8px; margin-bottom: 16px; }
+
+/* =============================================
+   リンク ウィジェット
+============================================= */
+.links-add-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+.links-add-form input, .links-add-form select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 13px;
+  outline: none;
+}
+.links-add-form input:focus, .links-add-form select:focus { border-color: var(--accent-blue); }
+.links-categories { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.cat-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-sub);
+  transition: all 0.15s;
+}
+.cat-badge.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+.links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.link-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.4);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  transition: all 0.15s;
+}
+[data-theme="dark"] .link-card { background: rgba(255,255,255,0.05); }
+.link-card:hover { border-color: var(--accent-blue); transform: translateY(-2px); }
+.link-title { font-size: 13px; font-weight: 600; }
+.link-url { font-size: 11px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.link-cat { font-size: 11px; color: var(--accent-purple); background: var(--muted-purple); padding: 2px 7px; border-radius: 20px; display: inline-block; }
+.link-del { position: absolute; top: 8px; right: 8px; background: none; border: none; cursor: pointer; color: var(--text-sub); opacity: 0; transition: opacity 0.15s; font-size: 14px; }
+.link-card:hover .link-del { opacity: 1; }
+.link-del:hover { color: #ef4444; }
+
+/* =============================================
+   ポモドーロ ウィジェット
+============================================= */
+.pomodoro-center { text-align: center; padding: 20px 0; }
+.pomodoro-display {
+  font-size: 72px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-blue);
+  letter-spacing: -2px;
+  line-height: 1;
+  margin-bottom: 24px;
+  font-family: 'Courier New', monospace;
+}
+.pomodoro-display.work { color: var(--accent-blue); }
+.pomodoro-display.break { color: var(--accent-green); }
+.pomodoro-phase {
+  font-size: 14px;
+  color: var(--text-sub);
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.pomodoro-btns { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
+.pomodoro-progress {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.pomodoro-bar {
+  height: 100%;
+  background: var(--accent-blue);
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+.pomodoro-settings { display: flex; gap: 12px; justify-content: center; align-items: center; font-size: 13px; color: var(--text-sub); }
+.pomodoro-settings input[type="number"] {
+  width: 50px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  text-align: center;
+  font-size: 13px;
+  outline: none;
+}
+.pomodoro-count { font-size: 13px; color: var(--text-sub); }
+
+/* =============================================
+   お知らせテロップ
+============================================= */
+.ticker-wrap {
+  overflow: hidden;
+  padding: 12px 0;
+  background: var(--pale-blue);
+  border-radius: 10px;
+  border: 1px solid rgba(59,130,246,0.2);
+}
+.ticker-track {
+  display: flex;
+  animation: ticker-scroll 20s linear infinite;
+  white-space: nowrap;
+}
+.ticker-track:hover { animation-play-state: paused; }
+.ticker-item {
+  padding: 0 40px;
+  font-size: 14px;
+  color: var(--accent-blue);
+  font-weight: 500;
+}
+@keyframes ticker-scroll {
+  0%   { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
+
+/* =============================================
+   スクリーンセーバー
+============================================= */
+#screensaver {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+}
+#screensaver canvas { position: absolute; inset: 0; }
+#screensaver .ss-time {
+  position: relative;
+  z-index: 2;
+  font-size: 80px;
+  font-weight: 200;
+  color: rgba(255,255,255,0.9);
+  letter-spacing: -2px;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 40px rgba(255,255,255,0.3);
+}
+#screensaver .ss-date {
+  position: relative;
+  z-index: 2;
+  font-size: 18px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 4px;
+  margin-top: 8px;
+}
+#screensaver .ss-hint {
+  position: absolute;
+  bottom: 32px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  z-index: 2;
+}
+
+/* =============================================
+   FAB
+============================================= */
+#fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  color: #fff;
+  font-size: 24px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(59,130,246,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  transition: all 0.15s;
+}
+#fab:hover { transform: scale(1.1); opacity: 0.9; }
+
+/* =============================================
+   モーダル
+============================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg-card);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  width: 420px;
+  max-width: 95vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+.modal-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; display: block; }
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+}
+.form-input:focus { border-color: var(--accent-blue); }
+
+/* =============================================
+   アニメーション
+============================================= */
+.fade-in { animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* =============================================
+   レスポンシブ
+============================================= */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 60px; }
+  .nav-item span { display: none; }
+  .sidebar-logo { font-size: 0; }
+  #main { padding: 16px; }
+  .links-add-form { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- =============================================
+   お知らせテロップ（グローバル）
+============================================= -->
+<div id="ticker-global" style="position:fixed;top:0;left:var(--sidebar-w);right:0;z-index:50;display:none;"></div>
+
+<!-- =============================================
+   サイドバー
+============================================= -->
+<nav id="sidebar">
+  <div class="sidebar-logo">🚀 Workspace</div>
+
+  <div class="nav-item active" data-widget="todos" onclick="switchWidget('todos', this)">
+    <span class="icon">✅</span><span>Smart ToDo</span>
+    <div class="nav-dot" id="dot-todos"></div>
+  </div>
+  <div class="nav-item" data-widget="agenda" onclick="switchWidget('agenda', this)">
+    <span class="icon">📅</span><span>アジェンダ</span>
+    <div class="nav-dot" id="dot-agenda"></div>
+  </div>
+  <div class="nav-item" data-widget="chat" onclick="switchWidget('chat', this)">
+    <span class="icon">🤖</span><span>AI壁打ち</span>
+    <div class="nav-dot" id="dot-chat"></div>
+  </div>
+  <div class="nav-item" data-widget="journal" onclick="switchWidget('journal', this)">
+    <span class="icon">📝</span><span>日報</span>
+  </div>
+  <div class="nav-item" data-widget="links" onclick="switchWidget('links', this)">
+    <span class="icon">🔗</span><span>クイックリンク</span>
+  </div>
+  <div class="nav-item" data-widget="pomodoro" onclick="switchWidget('pomodoro', this)">
+    <span class="icon">⏱</span><span>ポモドーロ</span>
+  </div>
+  <div class="nav-item" data-widget="screensaver-widget" onclick="startScreensaver()">
+    <span class="icon">🌌</span><span>スクリーンセーバー</span>
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <span id="theme-icon">🌙</span>
+      <span id="theme-label">ダーク</span>
+    </div>
+  </div>
+</nav>
+
+<!-- =============================================
+   メインコンテンツ
+============================================= -->
+<main id="main">
+
+  <!-- ToDo ウィジェット -->
+  <div class="widget active fade-in" id="widget-todos">
+    <div class="card">
+      <div class="card-title">✅ Smart ToDo
+        <button class="btn btn-ghost btn-sm" onclick="loadTodos()" style="margin-left:auto">更新</button>
+      </div>
+      <div class="todo-input-row">
+        <input id="todo-input" type="text" placeholder="タスクを入力して Enter… (AIが優先度・工数を判定)" onkeydown="if(event.key==='Enter')addTodo()">
+        <button class="btn btn-primary" onclick="addTodo()">追加</button>
+      </div>
+      <div class="todo-list" id="todo-list">
+        <div class="skeleton" style="height:44px;"></div>
+        <div class="skeleton" style="height:44px;"></div>
+        <div class="skeleton" style="height:44px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- アジェンダ ウィジェット -->
+  <div class="widget" id="widget-agenda">
+    <div class="card">
+      <div class="card-title">📅 本日のアジェンダ
+        <button class="btn btn-ghost btn-sm" onclick="loadAgenda()" style="margin-left:auto">更新</button>
+      </div>
+      <div class="agenda-list" id="agenda-list">
+        <div class="skeleton" style="height:64px;"></div>
+        <div class="skeleton" style="height:64px;"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">💡 集中タイム提案</div>
+      <div class="focus-suggestion" id="focus-suggestion">AI提案を読み込み中...</div>
+    </div>
+  </div>
+
+  <!-- AI壁打ち ウィジェット -->
+  <div class="widget" id="widget-chat">
+    <div class="card">
+      <div class="card-title">🤖 AI壁打ちチャット</div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-msg ai fade-in">
+          <span class="chat-avatar">🤖</span>
+          <div class="chat-bubble">こんにちは！今日のタスクや悩みについて何でもお話しください。ToDoや予定の情報もコンテキストとして持っています。</div>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <textarea id="chat-input" placeholder="メッセージを入力… (Ctrl+Enter で送信)" onkeydown="if(event.ctrlKey&&event.key==='Enter')sendChat()"></textarea>
+        <button class="btn btn-primary" onclick="sendChat()">送信</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 日報 ウィジェット -->
+  <div class="widget" id="widget-journal">
+    <div class="card">
+      <div class="card-title">📝 インテリジェント日報</div>
+      <div class="journal-btns">
+        <button class="btn btn-primary" onclick="generateJournal()">🤖 AI自動生成</button>
+        <button class="btn btn-ghost btn-sm" onclick="saveJournal()">💾 保存</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearJournal()">🗑 クリア</button>
+      </div>
+      <textarea class="journal-textarea" id="journal-textarea" placeholder="日報を入力するか、AI自動生成ボタンで生成できます…"></textarea>
+      <div style="font-size:12px;color:var(--text-sub);margin-bottom:16px;">📅 日付: <input type="date" id="journal-date" style="border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);padding:4px 8px;border-radius:6px;font-size:12px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📚 過去の日報</div>
+      <div class="journal-list" id="journal-list">
+        <div class="skeleton" style="height:54px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- リンク ウィジェット -->
+  <div class="widget" id="widget-links">
+    <div class="card">
+      <div class="card-title">🔗 クイックリンク</div>
+      <div class="links-add-form">
+        <input id="link-title" type="text" placeholder="タイトル">
+        <input id="link-url" type="url" placeholder="https://...">
+        <select id="link-cat">
+          <option>仕事</option>
+          <option>ツール</option>
+          <option>参考</option>
+          <option>その他</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="addLink()">追加</button>
+      </div>
+      <div class="links-categories" id="links-categories">
+        <span class="cat-badge active" data-cat="all" onclick="filterLinks('all', this)">すべて</span>
+      </div>
+      <div class="links-grid" id="links-grid">
+        <div class="skeleton" style="height:80px;"></div>
+        <div class="skeleton" style="height:80px;"></div>
+        <div class="skeleton" style="height:80px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ポモドーロ ウィジェット -->
+  <div class="widget" id="widget-pomodoro">
+    <div class="card">
+      <div class="card-title">⏱ ポモドーロタイマー</div>
+      <div class="pomodoro-center">
+        <div class="pomodoro-phase" id="pomo-phase">WORK</div>
+        <div class="pomodoro-display work" id="pomo-display">25:00</div>
+        <div class="pomodoro-progress">
+          <div class="pomodoro-bar" id="pomo-bar" style="width:100%"></div>
+        </div>
+        <div class="pomodoro-btns">
+          <button class="btn btn-primary" id="pomo-start-btn" onclick="pomodoroStart()">▶ スタート</button>
+          <button class="btn btn-ghost" onclick="pomodoroReset()">⟳ リセット</button>
+        </div>
+        <div class="pomodoro-count" id="pomo-count">完了セッション: 0</div>
+        <div class="pomodoro-settings">
+          作業
+          <input type="number" id="pomo-work-min" value="25" min="1" max="60">
+          分 / 休憩
+          <input type="number" id="pomo-break-min" value="5" min="1" max="30">
+          分
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- スクリーンセーバー（ウィジェットとしては空）-->
+  <div class="widget" id="widget-screensaver-widget">
+    <!-- 実際のスクリーンセーバーはオーバーレイ -->
+  </div>
+
+</main>
+
+<!-- =============================================
+   FAB ボタン
+============================================= -->
+<button id="fab" onclick="fabClick()" title="クイック追加">＋</button>
+
+<!-- =============================================
+   スクリーンセーバー オーバーレイ
+============================================= -->
+<div id="screensaver" onclick="stopScreensaver()">
+  <canvas id="ss-canvas"></canvas>
+  <div class="ss-time" id="ss-time">00:00</div>
+  <div class="ss-date" id="ss-date"></div>
+  <div class="ss-hint">クリックまたはキーを押して戻る</div>
+</div>
+
+<!-- =============================================
+   ToDo追加モーダル（FABから）
+============================================= -->
+<div class="modal-overlay" id="modal-todo">
+  <div class="modal">
+    <div class="modal-title">✅ ToDoを追加</div>
+    <div class="form-group">
+      <label class="form-label">タスク内容</label>
+      <input class="form-input" id="modal-todo-content" type="text" placeholder="タスクを入力…">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-todo')">キャンセル</button>
+      <button class="btn btn-primary" onclick="modalAddTodo()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+   JavaScript
+============================================= */
+<script>
+// =============================================
+// 設定・初期化
+// =============================================
+const API_TOKEN = localStorage.getItem('api_token') || prompt('APIトークンを入力してください:') || '';
+if (API_TOKEN) localStorage.setItem('api_token', API_TOKEN);
+
+const HEADERS = {
+  'Content-Type': 'application/json',
+  'X-Api-Token': API_TOKEN,
+};
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    headers: HEADERS,
+    ...opts,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json();
+}
+
+// =============================================
+// テーマ
+// =============================================
+(function initTheme() {
+  const saved = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  updateThemeIcon(saved);
+})();
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  updateThemeIcon(next);
+}
+
+function updateThemeIcon(theme) {
+  document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+  document.getElementById('theme-label').textContent = theme === 'dark' ? 'ライト' : 'ダーク';
+}
+
+// =============================================
+// ウィジェット切り替え
+// =============================================
+let activeWidget = 'todos';
+
+function switchWidget(name, el) {
+  if (name === 'screensaver-widget') return;
+  document.querySelectorAll('.widget').forEach(w => w.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const w = document.getElementById('widget-' + name);
+  if (w) { w.classList.add('active'); w.classList.add('fade-in'); setTimeout(()=>w.classList.remove('fade-in'),300); }
+  if (el) el.classList.add('active');
+  activeWidget = name;
+
+  // 遅延読み込み
+  if (name === 'todos') loadTodos();
+  if (name === 'agenda') loadAgenda();
+  if (name === 'journal') { loadJournalList(); initJournalDate(); }
+  if (name === 'links') loadLinks();
+  if (name === 'chat') {} // 初期メッセージはすでにある
+}
+
+// =============================================
+// お知らせテロップ
+// =============================================
+async function loadAnnouncements() {
+  try {
+    const data = await api('/api/announcements');
+    const ticker = document.getElementById('ticker-global');
+    if (data.announcements && data.announcements.length > 0) {
+      ticker.style.display = 'block';
+      const texts = data.announcements.map(a => a.content).join('　　★　　');
+      ticker.innerHTML = `<div class="ticker-wrap"><div class="ticker-track"><span class="ticker-item">${texts}</span><span class="ticker-item">${texts}</span></div></div>`;
+    }
+  } catch {}
+}
+
+// =============================================
+// ToDo
+// =============================================
+let allTodos = [];
+
+async function loadTodos() {
+  try {
+    const data = await api('/api/todos');
+    allTodos = data.todos || [];
+    renderTodos(allTodos);
+  } catch (e) {
+    document.getElementById('todo-list').innerHTML = `<div style="color:#ef4444;font-size:13px;">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+function renderTodos(todos) {
+  const el = document.getElementById('todo-list');
+  if (!todos.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text-sub);padding:20px;font-size:14px;">ToDoはありません 🎉</div>';
+    return;
+  }
+  el.innerHTML = todos.map(t => `
+    <div class="todo-item ${t.completed ? 'done' : ''} fade-in" id="todo-${t.row}">
+      <div class="todo-check ${t.completed ? 'checked' : ''}" onclick="toggleTodo(${t.row}, ${t.completed})">
+        ${t.completed ? '✓' : ''}
+      </div>
+      <span class="todo-text">${escHtml(t.content)}</span>
+      ${t.priority ? `<span class="priority-badge priority-${t.priority}">${t.priority}</span>` : ''}
+      ${t.effort ? `<span class="effort-badge">工数:${t.effort}</span>` : ''}
+      <button class="todo-del-btn" onclick="deleteTodo(${t.row})" title="削除">×</button>
+    </div>
+  `).join('');
+}
+
+async function addTodo() {
+  const input = document.getElementById('todo-input');
+  const content = input.value.trim();
+  if (!content) return;
+
+  const tmpEl = document.createElement('div');
+  tmpEl.className = 'todo-item';
+  tmpEl.innerHTML = `<div class="skeleton" style="height:20px;flex:1;"></div><span style="font-size:12px;color:var(--text-sub)">AI判定中…</span>`;
+  document.getElementById('todo-list').prepend(tmpEl);
+  input.value = '';
+
+  try {
+    // AI分析
+    let priority = '中', effort = '中';
+    try {
+      const ai = await api('/api/ai/analyze-todo', {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      });
+      priority = ai.priority || '中';
+      effort = ai.effort || '中';
+    } catch {}
+
+    await api('/api/todos', {
+      method: 'POST',
+      body: JSON.stringify({ content, priority, effort }),
+    });
+    showDot('todos');
+    await loadTodos();
+  } catch (e) {
+    tmpEl.remove();
+    alert('追加エラー: ' + e.message);
+  }
+}
+
+async function toggleTodo(row, currentCompleted) {
+  try {
+    await api(`/api/todos/${row}`, {
+      method: 'PUT',
+      body: JSON.stringify({ completed: !currentCompleted }),
+    });
+    await loadTodos();
+  } catch (e) { alert('更新エラー: ' + e.message); }
+}
+
+async function deleteTodo(row) {
+  try {
+    await api(`/api/todos/${row}`, { method: 'DELETE' });
+    document.getElementById(`todo-${row}`)?.remove();
+    allTodos = allTodos.filter(t => t.row !== row);
+  } catch (e) { alert('削除エラー: ' + e.message); }
+}
+
+// =============================================
+// アジェンダ
+// =============================================
+let agendaData = [];
+
+async function loadAgenda() {
+  const el = document.getElementById('agenda-list');
+  const focusEl = document.getElementById('focus-suggestion');
+
+  try {
+    const data = await api('/api/agenda');
+    agendaData = data.events || [];
+    if (!agendaData.length) {
+      el.innerHTML = '<div style="text-align:center;color:var(--text-sub);padding:20px;font-size:14px;">本日の予定はありません</div>';
+    } else {
+      el.innerHTML = agendaData.map(e => `
+        <div class="agenda-item fade-in">
+          <div class="agenda-time">${escHtml(e.time || '終日')}</div>
+          <div>
+            <div class="agenda-title">
+              ${e.html_link ? `<a href="${escHtml(e.html_link)}" target="_blank" style="color:inherit;text-decoration:none;">${escHtml(e.title)}</a>` : escHtml(e.title)}
+              ${e.all_day ? '<span style="font-size:11px;background:var(--pale-blue);color:var(--accent-blue);padding:2px 6px;border-radius:4px;margin-left:6px;">終日</span>' : ''}
+            </div>
+            ${e.location ? `<div class="agenda-loc">📍 ${escHtml(e.location)}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 集中タイム提案
+    focusEl.textContent = '分析中…';
+    try {
+      const f = await api('/api/ai/suggest-focus', {
+        method: 'POST',
+        body: JSON.stringify({ agenda: agendaData }),
+      });
+      focusEl.textContent = f.suggestion;
+    } catch {
+      focusEl.textContent = '集中タイムの提案を取得できませんでした。';
+    }
+  } catch (e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:13px;">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+// =============================================
+// AI壁打ちチャット
+// =============================================
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const container = document.getElementById('chat-messages');
+  appendChatMsg('user', msg);
+
+  // スケルトン
+  const skeletonId = 'chat-skeleton-' + Date.now();
+  container.insertAdjacentHTML('beforeend', `
+    <div class="chat-msg ai fade-in" id="${skeletonId}">
+      <span class="chat-avatar">🤖</span>
+      <div class="chat-bubble" style="min-width:120px;">
+        <div class="skeleton" style="height:14px;width:80%;"></div>
+        <div class="skeleton" style="height:14px;width:60%;margin-top:4px;"></div>
+      </div>
+    </div>
+  `);
+  container.scrollTop = container.scrollHeight;
+  showDot('chat');
+
+  // コンテキスト構築
+  const context = {
+    todos: allTodos.filter(t => !t.completed).map(t => t.content),
+    agenda: agendaData.map(e => `${e.time} ${e.title}`),
+  };
+
+  try {
+    const data = await api('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: msg, context }),
+    });
+    document.getElementById(skeletonId)?.remove();
+    appendChatMsg('ai', data.reply);
+  } catch (e) {
+    document.getElementById(skeletonId)?.remove();
+    appendChatMsg('ai', `エラー: ${e.message}`);
+  }
+}
+
+function appendChatMsg(role, text) {
+  const container = document.getElementById('chat-messages');
+  const avatar = role === 'ai' ? '🤖' : '🙋';
+  container.insertAdjacentHTML('beforeend', `
+    <div class="chat-msg ${role} fade-in">
+      <span class="chat-avatar">${avatar}</span>
+      <div class="chat-bubble">${escHtml(text)}</div>
+    </div>
+  `);
+  container.scrollTop = container.scrollHeight;
+}
+
+// =============================================
+// 日報
+// =============================================
+function initJournalDate() {
+  const d = document.getElementById('journal-date');
+  if (!d.value) {
+    const today = new Date().toISOString().split('T')[0];
+    d.value = today;
+  }
+}
+
+async function generateJournal() {
+  const textarea = document.getElementById('journal-textarea');
+  textarea.value = 'AI生成中…';
+  textarea.disabled = true;
+
+  const completedTodos = allTodos.filter(t => t.completed).map(t => t.content);
+  const agendaList = agendaData.map(e => `${e.time} ${e.title}`);
+
+  try {
+    const data = await api('/api/ai/generate-journal', {
+      method: 'POST',
+      body: JSON.stringify({ completed_todos: completedTodos, agenda: agendaList }),
+    });
+    textarea.value = data.journal;
+  } catch (e) {
+    textarea.value = '';
+    alert('日報生成エラー: ' + e.message);
+  } finally {
+    textarea.disabled = false;
+  }
+}
+
+async function saveJournal() {
+  const content = document.getElementById('journal-textarea').value.trim();
+  const date = document.getElementById('journal-date').value;
+  if (!content) { alert('内容を入力してください'); return; }
+  try {
+    await api('/api/journal', {
+      method: 'POST',
+      body: JSON.stringify({ date, content }),
+    });
+    alert('日報を保存しました');
+    loadJournalList();
+  } catch (e) { alert('保存エラー: ' + e.message); }
+}
+
+function clearJournal() {
+  document.getElementById('journal-textarea').value = '';
+}
+
+async function loadJournalList() {
+  try {
+    const data = await api('/api/journal');
+    const el = document.getElementById('journal-list');
+    const journals = data.journals || [];
+    if (!journals.length) {
+      el.innerHTML = '<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:16px;">日報はまだありません</div>';
+      return;
+    }
+    el.innerHTML = journals.slice(0, 10).map(j => `
+      <div class="journal-entry fade-in" onclick="openJournal('${escHtml(j.content.replace(/'/g, "\\'"))}', '${j.date}')">
+        <div class="journal-date">📅 ${j.date}</div>
+        <div class="journal-preview">${escHtml(j.content.slice(0, 80))}…</div>
+      </div>
+    `).join('');
+  } catch {}
+}
+
+function openJournal(content, date) {
+  document.getElementById('journal-textarea').value = content;
+  document.getElementById('journal-date').value = date;
+}
+
+// =============================================
+// リンク
+// =============================================
+let allLinks = [];
+let activeCategory = 'all';
+
+async function loadLinks() {
+  try {
+    const data = await api('/api/links');
+    allLinks = data.links || [];
+    renderLinks();
+    renderCategories();
+  } catch (e) {
+    document.getElementById('links-grid').innerHTML = `<div style="color:#ef4444;font-size:13px;">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+function renderCategories() {
+  const cats = ['all', ...new Set(allLinks.map(l => l.category).filter(Boolean))];
+  const el = document.getElementById('links-categories');
+  el.innerHTML = cats.map(c => `
+    <span class="cat-badge ${c === activeCategory ? 'active' : ''}" data-cat="${c}" onclick="filterLinks('${c}', this)">
+      ${c === 'all' ? 'すべて' : c}
+    </span>
+  `).join('');
+}
+
+function filterLinks(cat, el) {
+  activeCategory = cat;
+  document.querySelectorAll('.cat-badge').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderLinks();
+}
+
+function renderLinks() {
+  const filtered = activeCategory === 'all' ? allLinks : allLinks.filter(l => l.category === activeCategory);
+  const el = document.getElementById('links-grid');
+  if (!filtered.length) {
+    el.innerHTML = '<div style="color:var(--text-sub);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">リンクはありません</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(l => `
+    <div class="link-card fade-in">
+      <a href="${escHtml(l.url)}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">
+        <div class="link-title">${escHtml(l.title)}</div>
+        <div class="link-url">${escHtml(l.url)}</div>
+        ${l.category ? `<span class="link-cat">${escHtml(l.category)}</span>` : ''}
+      </a>
+      <button class="link-del" onclick="deleteLink(${l.row})" title="削除">×</button>
+    </div>
+  `).join('');
+}
+
+async function addLink() {
+  const title = document.getElementById('link-title').value.trim();
+  const url = document.getElementById('link-url').value.trim();
+  const category = document.getElementById('link-cat').value;
+  if (!title || !url) { alert('タイトルとURLを入力してください'); return; }
+  try {
+    await api('/api/links', {
+      method: 'POST',
+      body: JSON.stringify({ title, url, category }),
+    });
+    document.getElementById('link-title').value = '';
+    document.getElementById('link-url').value = '';
+    await loadLinks();
+  } catch (e) { alert('追加エラー: ' + e.message); }
+}
+
+async function deleteLink(row) {
+  try {
+    await api(`/api/links/${row}`, { method: 'DELETE' });
+    allLinks = allLinks.filter(l => l.row !== row);
+    renderLinks();
+  } catch (e) { alert('削除エラー: ' + e.message); }
+}
+
+// =============================================
+// ポモドーロ
+// =============================================
+let pomoTimer = null;
+let pomoSeconds = 0;
+let pomoTotalSeconds = 0;
+let pomoPhase = 'work'; // work | break
+let pomoSessions = 0;
+let pomoRunning = false;
+
+function pomodoroStart() {
+  if (pomoRunning) {
+    clearInterval(pomoTimer);
+    pomoRunning = false;
+    document.getElementById('pomo-start-btn').textContent = '▶ スタート';
+    return;
+  }
+  if (pomoSeconds === 0) pomodoroReset();
+  pomoRunning = true;
+  document.getElementById('pomo-start-btn').textContent = '⏸ 一時停止';
+
+  pomoTimer = setInterval(() => {
+    pomoSeconds--;
+    updatePomodoroDisplay();
+    if (pomoSeconds <= 0) {
+      clearInterval(pomoTimer);
+      pomoRunning = false;
+      pomodoroFinish();
+    }
+  }, 1000);
+}
+
+function pomodoroReset() {
+  clearInterval(pomoTimer);
+  pomoRunning = false;
+  document.getElementById('pomo-start-btn').textContent = '▶ スタート';
+  if (pomoPhase === 'work') {
+    const mins = parseInt(document.getElementById('pomo-work-min').value) || 25;
+    pomoSeconds = pomoTotalSeconds = mins * 60;
+  } else {
+    const mins = parseInt(document.getElementById('pomo-break-min').value) || 5;
+    pomoSeconds = pomoTotalSeconds = mins * 60;
+  }
+  updatePomodoroDisplay();
+}
+
+function pomodoroFinish() {
+  playBeep();
+  if (pomoPhase === 'work') {
+    pomoSessions++;
+    pomoPhase = 'break';
+    document.getElementById('pomo-phase').textContent = 'BREAK';
+    document.getElementById('pomo-display').className = 'pomodoro-display break';
+    document.getElementById('pomo-count').textContent = `完了セッション: ${pomoSessions}`;
+  } else {
+    pomoPhase = 'work';
+    document.getElementById('pomo-phase').textContent = 'WORK';
+    document.getElementById('pomo-display').className = 'pomodoro-display work';
+  }
+  pomodoroReset();
+}
+
+function updatePomodoroDisplay() {
+  const m = Math.floor(pomoSeconds / 60).toString().padStart(2, '0');
+  const s = (pomoSeconds % 60).toString().padStart(2, '0');
+  document.getElementById('pomo-display').textContent = `${m}:${s}`;
+  const pct = pomoTotalSeconds > 0 ? (pomoSeconds / pomoTotalSeconds) * 100 : 100;
+  document.getElementById('pomo-bar').style.width = pct + '%';
+  document.getElementById('pomo-bar').style.background = pomoPhase === 'work' ? 'var(--accent-blue)' : 'var(--accent-green)';
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 1.5);
+  } catch {}
+}
+
+// 初期化
+pomodoroReset();
+
+// =============================================
+// スクリーンセーバー
+// =============================================
+let ssAnimFrame = null;
+let ssStars = [];
+
+function startScreensaver() {
+  const ss = document.getElementById('screensaver');
+  ss.style.display = 'flex';
+  initStars();
+  ssAnimate();
+  updateSsTime();
+  document.addEventListener('keydown', stopScreensaver, { once: true });
+}
+
+function stopScreensaver() {
+  const ss = document.getElementById('screensaver');
+  ss.style.display = 'none';
+  cancelAnimationFrame(ssAnimFrame);
+}
+
+function initStars() {
+  const canvas = document.getElementById('ss-canvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  ssStars = Array.from({ length: 200 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 2,
+    speed: Math.random() * 0.5 + 0.1,
+    opacity: Math.random(),
+  }));
+}
+
+function ssAnimate() {
+  const canvas = document.getElementById('ss-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ssStars.forEach(s => {
+    s.opacity += (Math.random() - 0.5) * 0.05;
+    s.opacity = Math.max(0.1, Math.min(1, s.opacity));
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${s.opacity})`;
+    ctx.fill();
+    s.y += s.speed;
+    if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+  });
+
+  ssAnimFrame = requestAnimationFrame(ssAnimate);
+  updateSsTime();
+}
+
+function updateSsTime() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2, '0');
+  const m = now.getMinutes().toString().padStart(2, '0');
+  document.getElementById('ss-time').textContent = `${h}:${m}`;
+  const days = ['日', '月', '火', '水', '木', '金', '土'];
+  document.getElementById('ss-date').textContent =
+    `${now.getFullYear()}.${(now.getMonth()+1).toString().padStart(2,'0')}.${now.getDate().toString().padStart(2,'0')} (${days[now.getDay()]})`;
+}
+
+// =============================================
+// FAB
+// =============================================
+function fabClick() {
+  if (activeWidget === 'todos') {
+    openModal('modal-todo');
+  } else if (activeWidget === 'links') {
+    document.getElementById('link-title').focus();
+  } else {
+    openModal('modal-todo');
+  }
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+async function modalAddTodo() {
+  const content = document.getElementById('modal-todo-content').value.trim();
+  if (!content) return;
+  document.getElementById('modal-todo-content').value = '';
+  closeModal('modal-todo');
+  switchWidget('todos', document.querySelector('[data-widget="todos"]'));
+  await addTodoWithContent(content);
+}
+
+async function addTodoWithContent(content) {
+  try {
+    let priority = '中', effort = '中';
+    try {
+      const ai = await api('/api/ai/analyze-todo', {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      });
+      priority = ai.priority || '中';
+      effort = ai.effort || '中';
+    } catch {}
+    await api('/api/todos', {
+      method: 'POST',
+      body: JSON.stringify({ content, priority, effort }),
+    });
+    await loadTodos();
+  } catch (e) { alert('追加エラー: ' + e.message); }
+}
+
+// モーダル外クリックで閉じる
+document.querySelectorAll('.modal-overlay').forEach(mo => {
+  mo.addEventListener('click', e => { if (e.target === mo) mo.classList.remove('open'); });
+});
+
+// =============================================
+// 通知ドット
+// =============================================
+function showDot(widgetId) {
+  const dot = document.getElementById('dot-' + widgetId);
+  if (dot && activeWidget !== widgetId) {
+    dot.classList.add('show');
+  }
+}
+
+// ウィジェット切り替え時にドットを消す
+const origSwitch = switchWidget;
+
+// =============================================
+// ユーティリティ
+// =============================================
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// =============================================
+// 初期読み込み
+// =============================================
+document.addEventListener('DOMContentLoaded', () => {
+  loadTodos();
+  loadAnnouncements();
+
+  // 日報の日付初期化
+  initJournalDate();
+});
+</script>
+</body>
+</html>

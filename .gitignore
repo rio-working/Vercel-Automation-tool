@@ -1,0 +1,14 @@
+# 環境変数・認証情報（絶対にコミットしない）
+.env
+*.json
+!vercel.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# ローカル開発用
+*.log
+.DS_Store
