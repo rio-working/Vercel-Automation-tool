@@ -147,6 +147,4 @@ def frontend(full_path: str = ""):
     return HTMLResponse(template.read_text(encoding="utf-8"))
 
 
-# ── Vercel サーバーレス用ハンドラー（ASGI→WSGI変換）────────────
-from a2wsgi import ASGIMiddleware
-handler = ASGIMiddleware(app)
+# ── Vercel: app変数をそのまま公開（@vercel/python がASGIを自動検出）

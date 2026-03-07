@@ -1,5 +1,4 @@
 fastapi==0.111.0
-a2wsgi==1.10.7
 gspread==6.1.2
 google-auth>=2.47.0
 google-api-python-client==2.131.0
