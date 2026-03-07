@@ -874,14 +874,63 @@ body {
 </div>
 
 <!-- =============================================
+   トークン入力画面
+============================================= -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:var(--bg-base);z-index:9998;display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);backdrop-filter:var(--blur);border:1px solid var(--border);border-radius:var(--radius);padding:40px;width:380px;max-width:95vw;box-shadow:var(--shadow);text-align:center;">
+    <div style="font-size:48px;margin-bottom:16px;">🚀</div>
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:8px;">Workspace Next</h2>
+    <p style="font-size:13px;color:var(--text-sub);margin-bottom:24px;">APIトークンを入力してください</p>
+    <input id="token-input" type="password" placeholder="APIトークン"
+      style="width:100%;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);font-size:14px;outline:none;margin-bottom:12px;"
+      onkeydown="if(event.key==='Enter')saveToken()">
+    <button onclick="saveToken()"
+      style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent-blue);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+      ログイン
+    </button>
+    <p id="token-error" style="color:#ef4444;font-size:12px;margin-top:10px;display:none;">トークンが正しくありません</p>
+  </div>
+</div>
+
+<!-- =============================================
    JavaScript
-============================================= */
+============================================= -->
 <script>
 // =============================================
 // 設定・初期化
 // =============================================
-const API_TOKEN = localStorage.getItem('api_token') || prompt('APIトークンを入力してください:') || '';
-if (API_TOKEN) localStorage.setItem('api_token', API_TOKEN);
+let API_TOKEN = localStorage.getItem('api_token') || '';
+
+// トークン未設定ならログイン画面表示
+if (!API_TOKEN) {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('fab').style.display = 'none';
+}
+
+function saveToken() {
+  const val = document.getElementById('token-input').value.trim();
+  if (!val) return;
+  // 即時検証
+  fetch('/api/config', { headers: { 'X-Api-Token': val } }).then(r => {
+    if (r.ok) {
+      API_TOKEN = val;
+      localStorage.setItem('api_token', val);
+      HEADERS['X-Api-Token'] = val;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('sidebar').style.display = '';
+      document.getElementById('main').style.display = '';
+      document.getElementById('fab').style.display = '';
+      loadTodos();
+      loadAnnouncements();
+    } else {
+      document.getElementById('token-error').style.display = 'block';
+    }
+  }).catch(() => {
+    document.getElementById('token-error').style.display = 'block';
+  });
+}
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -1536,11 +1585,14 @@ function escHtml(str) {
 // 初期読み込み
 // =============================================
 document.addEventListener('DOMContentLoaded', () => {
-  loadTodos();
-  loadAnnouncements();
-
-  // 日報の日付初期化
-  initJournalDate();
+  if (API_TOKEN) {
+    loadTodos();
+    loadAnnouncements();
+    initJournalDate();
+  } else {
+    // ログイン画面でトークン入力を待つ
+    setTimeout(() => document.getElementById('token-input')?.focus(), 100);
+  }
 });
 </script>
 </body>
