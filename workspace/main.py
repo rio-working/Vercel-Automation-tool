@@ -5,8 +5,6 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from mangum import Mangum
 from pydantic import BaseModel
 
 from config import APP_CONFIG
@@ -149,5 +147,6 @@ def frontend(full_path: str = ""):
     return HTMLResponse(template.read_text(encoding="utf-8"))
 
 
-# ── Vercel サーバーレス用ハンドラー ────────────────────────────
-handler = Mangum(app, lifespan="off")
+# ── Vercel サーバーレス用ハンドラー（ASGI→WSGI変換）────────────
+from a2wsgi import ASGIMiddleware
+handler = ASGIMiddleware(app)
