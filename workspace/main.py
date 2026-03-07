@@ -150,4 +150,4 @@ def frontend(full_path: str = ""):
 
 
 # ── Vercel サーバーレス用ハンドラー ────────────────────────────
-handler = Mangum(app)
+handler = Mangum(app, lifespan="off")
