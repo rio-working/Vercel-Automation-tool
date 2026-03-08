@@ -648,11 +648,212 @@ body {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* =============================================
+   メモ（付箋）ウィジェット
+============================================= */
+.memos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.memo-card {
+  border-radius: 12px;
+  padding: 14px 16px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  box-shadow: 2px 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.memo-card:hover { transform: translateY(-2px); box-shadow: 4px 8px 20px rgba(0,0,0,0.15); }
+.memo-card.color-yellow { background: #fef9c3; }
+.memo-card.color-blue   { background: #dbeafe; }
+.memo-card.color-green  { background: #d1fae5; }
+.memo-card.color-pink   { background: #fce7f3; }
+.memo-card.color-purple { background: #ede9fe; }
+[data-theme="dark"] .memo-card.color-yellow { background: #78350f; }
+[data-theme="dark"] .memo-card.color-blue   { background: #1e3a5f; }
+[data-theme="dark"] .memo-card.color-green  { background: #14402e; }
+[data-theme="dark"] .memo-card.color-pink   { background: #4a1942; }
+[data-theme="dark"] .memo-card.color-purple { background: #2d1b69; }
+.memo-content {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-main);
+  outline: none;
+  resize: none;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.memo-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.memo-card:hover .memo-footer { opacity: 1; }
+.memo-del-btn {
+  background: rgba(0,0,0,0.15);
+  border: none;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-main);
+}
+.memo-del-btn:hover { background: #ef4444; color: #fff; }
+.memo-add-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.memo-add-form textarea {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 14px;
+  resize: none;
+  height: 60px;
+  outline: none;
+  font-family: inherit;
+}
+.memo-add-form textarea:focus { border-color: var(--accent-blue); }
+.color-picker { display: flex; gap: 6px; align-items: center; }
+.color-dot {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+}
+.color-dot.selected { border-color: var(--text-main); transform: scale(1.2); }
+.color-dot.c-yellow { background: #fef9c3; }
+.color-dot.c-blue   { background: #dbeafe; }
+.color-dot.c-green  { background: #d1fae5; }
+.color-dot.c-pink   { background: #fce7f3; }
+.color-dot.c-purple { background: #ede9fe; }
+
+/* =============================================
+   設定ウィジェット
+============================================= */
+.settings-section { margin-bottom: 24px; }
+.settings-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row .label { font-weight: 500; }
+.settings-row .desc { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+.toggle-switch {
+  position: relative;
+  width: 44px; height: 24px;
+  flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+  border-radius: 24px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle-slider:before {
+  content: '';
+  position: absolute;
+  height: 18px; width: 18px;
+  left: 3px; bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--accent-blue); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+/* =============================================
+   Google Tasks セクション（アジェンダ内）
+============================================= */
+.tasks-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.tasks-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin-bottom: 10px;
+}
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.4);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+[data-theme="dark"] .task-item { background: rgba(255,255,255,0.05); }
+.task-item .task-due {
+  font-size: 11px;
+  color: var(--accent-orange);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* =============================================
+   構造化出力モーダル
+============================================= */
+.modal-wide {
+  width: 600px;
+  max-width: 95vw;
+}
+.structured-output {
+  background: var(--bg-base);
+  border-radius: 10px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: inherit;
+}
+
+/* =============================================
    レスポンシブ
 ============================================= */
 @media (max-width: 768px) {
   :root { --sidebar-w: 60px; }
-  .nav-item span { display: none; }
+  .nav-item span:not(.icon) { display: none; }
+  .nav-item { padding: 10px 0; justify-content: center; }
+  #sidebar { padding: 20px 4px; }
   .sidebar-logo { font-size: 0; }
   #main { padding: 16px; }
   .links-add-form { grid-template-columns: 1fr 1fr; }
@@ -692,6 +893,12 @@ body {
   </div>
   <div class="nav-item" data-widget="pomodoro" onclick="switchWidget('pomodoro', this)">
     <span class="icon">⏱</span><span>ポモドーロ</span>
+  </div>
+  <div class="nav-item" data-widget="memos" onclick="switchWidget('memos', this)">
+    <span class="icon">📌</span><span>メモ</span>
+  </div>
+  <div class="nav-item" data-widget="settings" onclick="switchWidget('settings', this)">
+    <span class="icon">⚙️</span><span>設定</span>
   </div>
   <div class="nav-item" data-widget="screensaver-widget" onclick="startScreensaver()">
     <span class="icon">🌌</span><span>スクリーンセーバー</span>
@@ -738,6 +945,11 @@ body {
         <div class="skeleton" style="height:64px;"></div>
         <div class="skeleton" style="height:64px;"></div>
       </div>
+      <!-- Google Tasks セクション -->
+      <div class="tasks-section" id="tasks-section" style="display:none;">
+        <div class="tasks-section-title">☑️ 本日のタスク (Google Tasks)</div>
+        <div id="tasks-list"></div>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">💡 集中タイム提案</div>
@@ -758,6 +970,9 @@ body {
       <div class="chat-input-row">
         <textarea id="chat-input" placeholder="メッセージを入力… (Ctrl+Enter で送信)" onkeydown="if(event.ctrlKey&&event.key==='Enter')sendChat()"></textarea>
         <button class="btn btn-primary" onclick="sendChat()">送信</button>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" onclick="structureChat()">📋 整理する</button>
       </div>
     </div>
   </div>
@@ -834,6 +1049,129 @@ body {
     </div>
   </div>
 
+  <!-- メモ（付箋）ウィジェット -->
+  <div class="widget" id="widget-memos">
+    <div class="card">
+      <div class="card-title">📌 付箋メモ
+        <button class="btn btn-ghost btn-sm" onclick="loadMemos()" style="margin-left:auto">更新</button>
+      </div>
+      <!-- 追加フォーム -->
+      <div class="memo-add-form">
+        <textarea id="memo-input" placeholder="メモを入力…" onkeydown="if(event.ctrlKey&&event.key==='Enter')addMemo()"></textarea>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+          <div class="color-picker" id="color-picker">
+            <div class="color-dot c-yellow selected" data-color="yellow" onclick="selectMemoColor('yellow', this)"></div>
+            <div class="color-dot c-blue"   data-color="blue"   onclick="selectMemoColor('blue', this)"></div>
+            <div class="color-dot c-green"  data-color="green"  onclick="selectMemoColor('green', this)"></div>
+            <div class="color-dot c-pink"   data-color="pink"   onclick="selectMemoColor('pink', this)"></div>
+            <div class="color-dot c-purple" data-color="purple" onclick="selectMemoColor('purple', this)"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addMemo()">追加</button>
+        </div>
+      </div>
+      <!-- グリッド -->
+      <div class="memos-grid" id="memos-grid">
+        <div class="skeleton" style="height:120px;"></div>
+        <div class="skeleton" style="height:120px;"></div>
+        <div class="skeleton" style="height:120px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 設定ウィジェット -->
+  <div class="widget" id="widget-settings">
+    <div class="card">
+      <div class="card-title">⚙️ 設定</div>
+
+      <!-- ウィジェット表示トグル -->
+      <div class="settings-section">
+        <div class="settings-section-title">ウィジェット表示</div>
+        <div class="settings-row">
+          <div><div class="label">Smart ToDo</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="sw-todos" checked onchange="toggleWidgetVisibility('todos', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-row">
+          <div><div class="label">アジェンダ</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="sw-agenda" checked onchange="toggleWidgetVisibility('agenda', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-row">
+          <div><div class="label">AI壁打ち</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="sw-chat" checked onchange="toggleWidgetVisibility('chat', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-row">
+          <div><div class="label">日報</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="sw-journal" checked onchange="toggleWidgetVisibility('journal', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-row">
+          <div><div class="label">クイックリンク</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="sw-links" checked onchange="toggleWidgetVisibility('links', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-row">
+          <div><div class="label">ポモドーロ</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="sw-pomodoro" checked onchange="toggleWidgetVisibility('pomodoro', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-row">
+          <div><div class="label">メモ</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="sw-memos" checked onchange="toggleWidgetVisibility('memos', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      <!-- AI機能 ON/OFF -->
+      <div class="settings-section">
+        <div class="settings-section-title">AI機能</div>
+        <div class="settings-row">
+          <div>
+            <div class="label">ToDo優先度・工数の自動判定</div>
+            <div class="desc">追加時にGeminiで優先度と工数を自動判定します</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="ai-todo" checked onchange="saveAiSetting('ai_todo', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="label">集中タイム提案</div>
+            <div class="desc">アジェンダから空き時間を分析して提案します</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="ai-focus" checked onchange="saveAiSetting('ai_focus', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="label">日報自動生成</div>
+            <div class="desc">完了タスクと予定から日報を自動生成します</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="ai-journal" checked onchange="saveAiSetting('ai_journal', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      <!-- Google Drive 連携 -->
+      <div class="settings-section">
+        <div class="settings-section-title">Google Drive 連携</div>
+        <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+          <div>
+            <div class="label">日報の保存先フォルダID</div>
+            <div class="desc">GoogleドライブのフォルダURL末尾の文字列（folders/〇〇）を入力。保存するとMarkdown形式で自動保存されます。</div>
+          </div>
+          <div style="display:flex;gap:8px;width:100%;">
+            <input id="drive-folder-id" class="form-input" type="text" placeholder="1BxiMV...（フォルダID）" style="flex:1;font-size:13px;">
+            <button class="btn btn-primary btn-sm" onclick="saveDriveFolderId()">保存</button>
+          </div>
+          <div id="drive-folder-status" style="font-size:12px;color:var(--text-sub);"></div>
+          <div id="drive-sa-email" style="font-size:12px;color:var(--accent-orange);display:none;">
+            ⚠️ このフォルダをサービスアカウント（<span id="sa-email-text"></span>）に共有してください（編集者権限）
+          </div>
+        </div>
+      </div>
+
+      <!-- APIトークン変更 -->
+      <div class="settings-section">
+        <div class="settings-section-title">認証</div>
+        <div class="settings-row">
+          <div><div class="label">APIトークンを変更</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="resetToken()">変更</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- スクリーンセーバー（ウィジェットとしては空）-->
   <div class="widget" id="widget-screensaver-widget">
     <!-- 実際のスクリーンセーバーはオーバーレイ -->
@@ -854,6 +1192,20 @@ body {
   <div class="ss-time" id="ss-time">00:00</div>
   <div class="ss-date" id="ss-date"></div>
   <div class="ss-hint">クリックまたはキーを押して戻る</div>
+</div>
+
+<!-- =============================================
+   構造化出力モーダル
+============================================= -->
+<div class="modal-overlay" id="modal-structure">
+  <div class="modal modal-wide">
+    <div class="modal-title">📋 会話の整理結果</div>
+    <div class="structured-output" id="structure-output">整理中...</div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="copyStructuredOutput()">📋 コピー</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-structure')">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <!-- =============================================
@@ -990,6 +1342,8 @@ function switchWidget(name, el) {
   if (name === 'agenda') loadAgenda();
   if (name === 'journal') { loadJournalList(); initJournalDate(); }
   if (name === 'links') loadLinks();
+  if (name === 'memos') loadMemos();
+  if (name === 'settings') initSettings();
   if (name === 'chat') {} // 初期メッセージはすでにある
 }
 
@@ -1054,16 +1408,18 @@ async function addTodo() {
   input.value = '';
 
   try {
-    // AI分析
+    // AI分析（設定ON時のみ）
     let priority = '中', effort = '中';
-    try {
-      const ai = await api('/api/ai/analyze-todo', {
-        method: 'POST',
-        body: JSON.stringify({ content }),
-      });
-      priority = ai.priority || '中';
-      effort = ai.effort || '中';
-    } catch {}
+    if (localStorage.getItem('ai_todo') !== 'false') {
+      try {
+        const ai = await api('/api/ai/analyze-todo', {
+          method: 'POST',
+          body: JSON.stringify({ content }),
+        });
+        priority = ai.priority || '中';
+        effort = ai.effort || '中';
+      } catch {}
+    }
 
     await api('/api/todos', {
       method: 'POST',
@@ -1125,24 +1481,75 @@ async function loadAgenda() {
     }
 
     // 集中タイム提案
-    focusEl.textContent = '分析中…';
-    try {
-      const f = await api('/api/ai/suggest-focus', {
-        method: 'POST',
-        body: JSON.stringify({ agenda: agendaData }),
-      });
-      focusEl.textContent = f.suggestion;
-    } catch {
-      focusEl.textContent = '集中タイムの提案を取得できませんでした。';
+    if (localStorage.getItem('ai_focus') !== 'false') {
+      focusEl.textContent = '分析中…';
+      try {
+        const f = await api('/api/ai/suggest-focus', {
+          method: 'POST',
+          body: JSON.stringify({ agenda: agendaData }),
+        });
+        focusEl.textContent = f.suggestion;
+      } catch {
+        focusEl.textContent = '集中タイムの提案を取得できませんでした。';
+      }
+    } else {
+      focusEl.textContent = 'AI機能はオフです（設定から変更できます）。';
     }
+
+    // Google Tasks
+    loadTasks();
   } catch (e) {
     el.innerHTML = `<div style="color:#ef4444;font-size:13px;">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+async function completeTask(taskId, btn) {
+  btn.classList.add('checked');
+  btn.textContent = '✓';
+  try {
+    await api(`/api/tasks/${taskId}/complete`, { method: 'PATCH' });
+    const el = document.getElementById('task-' + taskId);
+    if (el) {
+      el.style.opacity = '0.4';
+      el.style.textDecoration = 'line-through';
+      setTimeout(() => el.remove(), 1500);
+    }
+  } catch (e) {
+    btn.classList.remove('checked');
+    btn.textContent = '';
+    alert('完了エラー: ' + e.message);
+  }
+}
+
+async function loadTasks() {
+  try {
+    const data = await api('/api/tasks');
+    const tasks = data.tasks || [];
+    const section = document.getElementById('tasks-section');
+    const listEl = document.getElementById('tasks-list');
+    if (!tasks.length) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = 'block';
+    listEl.innerHTML = tasks.map(t => `
+      <div class="task-item fade-in" id="task-${t.id}">
+        <div class="todo-check" onclick="completeTask('${t.id}', this)" title="完了にする"></div>
+        <span style="flex:1">${escHtml(t.title)}</span>
+        ${t.is_today ? '<span class="task-due">今日が期限</span>' : (t.due ? `<span class="task-due">${escHtml(t.due)}</span>` : '')}
+      </div>
+    `).join('');
+  } catch {
+    // 503（環境変数未設定）は無視
+    document.getElementById('tasks-section').style.display = 'none';
   }
 }
 
 // =============================================
 // AI壁打ちチャット
 // =============================================
+let chatHistory = []; // {role, text} ─ 構造化出力用
+
 async function sendChat() {
   const input = document.getElementById('chat-input');
   const msg = input.value.trim();
@@ -1195,6 +1602,8 @@ function appendChatMsg(role, text) {
     </div>
   `);
   container.scrollTop = container.scrollHeight;
+  // 構造化出力用に履歴を追跡
+  chatHistory.push({ role, text });
 }
 
 // =============================================
@@ -1534,14 +1943,16 @@ async function modalAddTodo() {
 async function addTodoWithContent(content) {
   try {
     let priority = '中', effort = '中';
-    try {
-      const ai = await api('/api/ai/analyze-todo', {
-        method: 'POST',
-        body: JSON.stringify({ content }),
-      });
-      priority = ai.priority || '中';
-      effort = ai.effort || '中';
-    } catch {}
+    if (localStorage.getItem('ai_todo') !== 'false') {
+      try {
+        const ai = await api('/api/ai/analyze-todo', {
+          method: 'POST',
+          body: JSON.stringify({ content }),
+        });
+        priority = ai.priority || '中';
+        effort = ai.effort || '中';
+      } catch {}
+    }
     await api('/api/todos', {
       method: 'POST',
       body: JSON.stringify({ content, priority, effort }),
@@ -1569,6 +1980,193 @@ function showDot(widgetId) {
 const origSwitch = switchWidget;
 
 // =============================================
+// メモ（付箋）
+// =============================================
+let allMemos = [];
+let selectedMemoColor = 'yellow';
+
+function selectMemoColor(color, el) {
+  selectedMemoColor = color;
+  document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function loadMemos() {
+  const grid = document.getElementById('memos-grid');
+  try {
+    const data = await api('/api/memos');
+    allMemos = data.memos || [];
+    renderMemos();
+  } catch (e) {
+    grid.innerHTML = `<div style="color:#ef4444;font-size:13px;">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+function renderMemos() {
+  const grid = document.getElementById('memos-grid');
+  if (!allMemos.length) {
+    grid.innerHTML = '<div style="text-align:center;color:var(--text-sub);padding:20px;font-size:14px;grid-column:1/-1;">メモはありません 📌</div>';
+    return;
+  }
+  grid.innerHTML = allMemos.map(m => `
+    <div class="memo-card color-${m.color} fade-in">
+      <div class="memo-content">${escHtml(m.content)}</div>
+      <div class="memo-footer">
+        <button class="memo-del-btn" onclick="deleteMemo(${m.row})">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addMemo() {
+  const input = document.getElementById('memo-input');
+  const content = input.value.trim();
+  if (!content) return;
+  try {
+    await api('/api/memos', {
+      method: 'POST',
+      body: JSON.stringify({ content, color: selectedMemoColor }),
+    });
+    input.value = '';
+    await loadMemos();
+  } catch (e) { alert('追加エラー: ' + e.message); }
+}
+
+async function deleteMemo(row) {
+  try {
+    await api(`/api/memos/${row}`, { method: 'DELETE' });
+    await loadMemos();
+  } catch (e) { alert('削除エラー: ' + e.message); }
+}
+
+// =============================================
+// 設定
+// =============================================
+const WIDGET_IDS = ['todos', 'agenda', 'chat', 'journal', 'links', 'pomodoro', 'memos'];
+
+async function initSettings() {
+  // ウィジェット表示トグルを LocalStorage から復元
+  WIDGET_IDS.forEach(id => {
+    const sw = document.getElementById('sw-' + id);
+    if (!sw) return;
+    sw.checked = localStorage.getItem('widget_' + id) !== 'false';
+  });
+
+  // AI設定を復元
+  ['ai_todo', 'ai_focus', 'ai_journal'].forEach(key => {
+    const el = document.getElementById(key.replace('_', '-'));
+    if (!el) return;
+    el.checked = localStorage.getItem(key) !== 'false';
+  });
+
+  // Google Drive フォルダID をシートから取得
+  try {
+    const data = await api('/api/settings');
+    const folderId = data.settings['journal_drive_folder_id'] || '';
+    document.getElementById('drive-folder-id').value = folderId;
+    if (folderId) {
+      document.getElementById('drive-folder-status').textContent = '✅ フォルダID設定済み';
+    }
+
+    // サービスアカウントのメールを表示
+    const saEmail = data.settings['service_account_email'] || '';
+    if (saEmail) {
+      document.getElementById('sa-email-text').textContent = saEmail;
+      document.getElementById('drive-sa-email').style.display = 'block';
+    }
+  } catch {}
+}
+
+async function saveDriveFolderId() {
+  const folderId = document.getElementById('drive-folder-id').value.trim();
+  const statusEl = document.getElementById('drive-folder-status');
+  if (!folderId) {
+    statusEl.textContent = '❌ フォルダIDを入力してください';
+    return;
+  }
+  try {
+    await api('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        key: 'journal_drive_folder_id',
+        value: folderId,
+        description: '日報のMarkdown保存先 Google DriveフォルダID',
+      }),
+    });
+    statusEl.textContent = '✅ 保存しました';
+    statusEl.style.color = 'var(--accent-green)';
+
+    // サービスアカウントメールを案内
+    const data = await api('/api/settings');
+    const saEmail = data.settings['service_account_email'] || '';
+    if (saEmail) {
+      document.getElementById('sa-email-text').textContent = saEmail;
+      document.getElementById('drive-sa-email').style.display = 'block';
+    }
+  } catch (e) {
+    statusEl.textContent = '❌ 保存エラー: ' + e.message;
+    statusEl.style.color = '#ef4444';
+  }
+}
+
+function toggleWidgetVisibility(widgetId, visible) {
+  localStorage.setItem('widget_' + widgetId, visible ? 'true' : 'false');
+  const navItem = document.querySelector(`[data-widget="${widgetId}"]`);
+  if (navItem) navItem.style.display = visible ? '' : 'none';
+}
+
+function saveAiSetting(key, value) {
+  localStorage.setItem(key, value ? 'true' : 'false');
+}
+
+function resetToken() {
+  if (!confirm('APIトークンをリセットして再ログインしますか？')) return;
+  localStorage.removeItem('api_token');
+  location.reload();
+}
+
+// ウィジェット可視性を起動時に適用
+function applyWidgetVisibility() {
+  WIDGET_IDS.forEach(id => {
+    const val = localStorage.getItem('widget_' + id);
+    if (val === 'false') {
+      const navItem = document.querySelector(`[data-widget="${id}"]`);
+      if (navItem) navItem.style.display = 'none';
+    }
+  });
+}
+
+// =============================================
+// 構造化出力（AI壁打ち整理）
+// =============================================
+async function structureChat() {
+  if (chatHistory.length < 2) {
+    alert('整理するには会話が必要です。まずAIと会話してください。');
+    return;
+  }
+  openModal('modal-structure');
+  document.getElementById('structure-output').textContent = '整理中…';
+  try {
+    const data = await api('/api/ai/structure-chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: chatHistory }),
+    });
+    document.getElementById('structure-output').textContent = data.result;
+  } catch (e) {
+    document.getElementById('structure-output').textContent = 'エラー: ' + e.message;
+  }
+}
+
+function copyStructuredOutput() {
+  const text = document.getElementById('structure-output').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = '✅ コピー済み';
+    setTimeout(() => { btn.textContent = '📋 コピー'; }, 2000);
+  }).catch(() => alert('コピーに失敗しました'));
+}
+
+// =============================================
 // ユーティリティ
 // =============================================
 function escHtml(str) {
@@ -1586,6 +2184,7 @@ function escHtml(str) {
 // =============================================
 document.addEventListener('DOMContentLoaded', () => {
   if (API_TOKEN) {
+    applyWidgetVisibility();
     loadTodos();
     loadAnnouncements();
     initJournalDate();

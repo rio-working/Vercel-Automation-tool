@@ -15,6 +15,7 @@ APP_CONFIG = {
         "links":         "Links",
         "journal":       "Journal",
         "announcements": "Announcements",
+        "memos":         "Memos",
         "settings":      "設定",
         "logs":          "ログ",
     },
@@ -23,6 +24,6 @@ APP_CONFIG = {
     # "token": X-Api-Tokenヘッダーで認証（API_SECRET_TOKEN環境変数）
     # "none":  認証なし
     "auth": {
-        "mode": "token",
+        "mode": "none",
     },
 }

@@ -12,3 +12,5 @@ __pycache__/
 # ローカル開発用
 *.log
 .DS_Store
+.vercel
+.env*.local

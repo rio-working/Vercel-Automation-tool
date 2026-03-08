@@ -56,6 +56,19 @@ def get_journal(_token=Depends(verify_token)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _build_markdown(date: str, content: str) -> str:
+    """ObsidianのFrontmatter付きMarkdownを生成する。"""
+    return f"""---
+date: {date}
+tags: [日報]
+---
+
+# 日報 {date}
+
+{content}
+"""
+
+
 @router.post("/api/journal")
 def create_journal(body: JournalCreate, _token=Depends(verify_token)):
     try:
@@ -66,7 +79,27 @@ def create_journal(body: JournalCreate, _token=Depends(verify_token)):
         row = [journal_id, body.date, body.content, body.auto_summary, now]
         append_row(_SHEET, row)
         log_info("journal.create", f"日報保存: {body.date}")
-        return {"success": True, "id": journal_id}
+
+        # Google Drive にMarkdownとして保存（フォルダID設定済みの場合）
+        drive_file_id = None
+        try:
+            from core.sheets import get_worksheet as _gws
+            ws = _gws(APP_CONFIG["sheet_names"]["settings"])
+            rows = ws.get_all_values()
+            folder_id = next(
+                (r[1] for r in rows if r and r[0] == "journal_drive_folder_id" and len(r) > 1),
+                ""
+            )
+            if folder_id:
+                from integrations.drive import upload_markdown
+                md = _build_markdown(body.date, body.content)
+                filename = f"日報_{body.date}.md"
+                drive_file_id = upload_markdown(folder_id, filename, md)
+                log_info("journal.drive", f"Drive保存: {filename}")
+        except Exception as drive_err:
+            log_error("journal.drive", "Drive保存エラー（スキップ）", drive_err)
+
+        return {"success": True, "id": journal_id, "drive_file_id": drive_file_id}
     except Exception as e:
         log_error("journal.create", "日報保存エラー", e)
         raise HTTPException(status_code=500, detail=str(e))

@@ -97,6 +97,43 @@ def generate_journal(completed_todos: list[str], agenda: list[str]) -> str:
         return "日報の自動生成に失敗しました。手動で入力してください。"
 
 
+def structure_chat(messages: list[dict]) -> str:
+    """チャット履歴を箇条書き＋アクションアイテムに整理する。"""
+    try:
+        client = _get_client()
+        if not messages:
+            return "整理する会話がありません。"
+
+        history_text = "\n".join([
+            f"{'ユーザー' if m.get('role') == 'user' else 'AI'}: {m.get('text', '')}"
+            for m in messages
+        ])
+
+        prompt = f"""以下の会話を整理して、日本語で構造化してください。
+
+【会話履歴】
+{history_text}
+
+以下の形式で出力してください：
+
+## 会話のサマリー
+（2〜3文で要点をまとめる）
+
+## 主なポイント
+- （箇条書きで要点を列挙）
+
+## アクションアイテム
+- （具体的に実行すべき行動を列挙。なければ「なし」）
+
+JSONや説明文は不要です。上記フォーマットのテキストのみを返してください。"""
+
+        response = client.models.generate_content(model=_MODEL_NAME, contents=prompt)
+        return response.text.strip()
+    except Exception as e:
+        log_error("gemini.structure_chat", "会話整理エラー", e)
+        return "会話の整理に失敗しました。"
+
+
 def suggest_focus(agenda: list[dict]) -> str:
     """カレンダー予定の隙間時間を分析して集中タイムを提案する。"""
     try:
