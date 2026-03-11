@@ -100,6 +100,8 @@ class AnalyzeTodoRequest(BaseModel):
 class GenerateJournalRequest(BaseModel):
     completed_todos: list[str] = []
     agenda: list[str] = []
+    task_comments: list[dict] = []
+    event_comments: list[dict] = []
 
 
 class SuggestFocusRequest(BaseModel):
@@ -137,7 +139,12 @@ def ai_analyze_todo(body: AnalyzeTodoRequest, _token=Depends(verify_token)):
 def ai_generate_journal(body: GenerateJournalRequest, _token=Depends(verify_token)):
     try:
         from integrations.gemini import generate_journal
-        result = generate_journal(body.completed_todos, body.agenda)
+        result = generate_journal(
+            body.completed_todos,
+            body.agenda,
+            task_comments=body.task_comments or None,
+            event_comments=body.event_comments or None,
+        )
         return {"journal": result}
     except Exception as e:
         log_error("ai.generate_journal", "日報生成エラー", e)
@@ -167,11 +174,46 @@ def ai_structure_chat(body: StructureChatRequest, _token=Depends(verify_token)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/tasks/lists")
+def get_task_lists(_token=Depends(verify_token)):
+    try:
+        from integrations.tasks import get_task_lists as _get_lists
+        lists = _get_lists()
+        return {"lists": lists}
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        log_error("tasks.lists", "タスクリスト取得エラー", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/calendar/lists")
+def get_calendar_lists(_token=Depends(verify_token)):
+    try:
+        from integrations.calendar import get_calendar_list
+        lists = get_calendar_list()
+        return {"lists": lists}
+    except Exception as e:
+        log_error("calendar.lists", "カレンダーリスト取得エラー", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/tasks")
 def get_tasks(_token=Depends(verify_token)):
     try:
+        import json as _json
         from integrations.tasks import get_today_tasks
-        tasks = get_today_tasks()
+        from routers.settings_api import _get_all_settings
+        # 設定から選択済みタスクリストIDを取得
+        list_ids = None
+        try:
+            settings = _get_all_settings()
+            raw = settings.get("task_selected_lists", "")
+            if raw:
+                list_ids = _json.loads(raw)
+        except Exception:
+            pass
+        tasks = get_today_tasks(list_ids=list_ids)
         return {"tasks": tasks}
     except ValueError as e:
         # 環境変数未設定は 503 で返す（フロント側でグレースフルに処理）
@@ -182,10 +224,10 @@ def get_tasks(_token=Depends(verify_token)):
 
 
 @app.patch("/api/tasks/{task_id}/complete")
-def complete_task(task_id: str, _token=Depends(verify_token)):
+def complete_task(task_id: str, list_id: str | None = None, _token=Depends(verify_token)):
     try:
         from integrations.tasks import complete_task as _complete
-        _complete(task_id)
+        _complete(task_id, list_id)
         log_info("tasks.complete", f"タスク完了: {task_id}")
         return {"success": True}
     except Exception as e:

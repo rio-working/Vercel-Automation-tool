@@ -75,8 +75,50 @@ def _item_to_event(item: dict) -> dict:
     }
 
 
-def get_today_events() -> list[dict]:
-    """本日の予定を全アクセス可能カレンダーから集約して返す。"""
+def get_calendar_list() -> list[dict]:
+    """環境変数に設定されたカレンダーIDの名称を取得して返す: [{id, summary}, ...]"""
+    try:
+        service = _get_service()
+        cal_ids: list[str] = []
+
+        primary_id = os.environ.get("GOOGLE_CALENDAR_ID", "").strip()
+        if primary_id:
+            cal_ids.append(primary_id)
+
+        extra = os.environ.get("GOOGLE_EXTRA_CALENDAR_IDS", "")
+        for cid in extra.split(","):
+            cid = cid.strip()
+            if cid and cid not in cal_ids:
+                cal_ids.append(cid)
+
+        # SA のカレンダー一覧も追加
+        try:
+            cal_list = service.calendarList().list().execute()
+            for cal in cal_list.get("items", []):
+                if cal["id"] not in cal_ids:
+                    cal_ids.append(cal["id"])
+        except Exception as e:
+            log_warn("calendar.get_calendar_list", f"calendarList取得スキップ: {e}")
+
+        result = []
+        for cid in cal_ids:
+            try:
+                cal = service.calendars().get(calendarId=cid).execute()
+                result.append({"id": cid, "summary": cal.get("summary", cid)})
+            except Exception:
+                result.append({"id": cid, "summary": cid})
+
+        return result
+
+    except Exception as e:
+        log_error("calendar.get_calendar_list", "カレンダーリスト取得エラー", e)
+        raise
+
+
+def get_today_events(selected_ids: list[str] | None = None) -> list[dict]:
+    """本日の予定を集約して返す。
+    selected_ids が指定された場合はそのIDのみ、なければ既存の動作（env var + SA全カレンダー）。
+    """
     try:
         service = _get_service()
 
@@ -89,27 +131,31 @@ def get_today_events() -> list[dict]:
         # 取得対象カレンダーIDを収集
         cal_ids: set[str] = set()
 
-        # 1) 環境変数で指定されたメインカレンダー
-        primary_id = os.environ.get("GOOGLE_CALENDAR_ID", "").strip()
-        if primary_id:
-            cal_ids.add(primary_id)
+        if selected_ids is not None:
+            # selected_ids が指定された場合はそのIDのみ
+            for cid in selected_ids:
+                if cid:
+                    cal_ids.add(cid)
+        else:
+            # 既存の動作: env var + SA全カレンダー
+            primary_id = os.environ.get("GOOGLE_CALENDAR_ID", "").strip()
+            if primary_id:
+                cal_ids.add(primary_id)
 
-        # 2) 追加カレンダー（カンマ区切り）
-        extra = os.environ.get("GOOGLE_EXTRA_CALENDAR_IDS", "")
-        for cid in extra.split(","):
-            cid = cid.strip()
-            if cid:
-                cal_ids.add(cid)
+            extra = os.environ.get("GOOGLE_EXTRA_CALENDAR_IDS", "")
+            for cid in extra.split(","):
+                cid = cid.strip()
+                if cid:
+                    cal_ids.add(cid)
 
-        # 3) サービスアカウントにアクセス権があるカレンダー一覧を自動取得
-        try:
-            cal_list = service.calendarList().list().execute()
-            for cal in cal_list.get("items", []):
-                cal_ids.add(cal["id"])
-        except Exception as e:
-            log_warn("calendar.get_today_events", f"カレンダー一覧取得スキップ: {e}")
+            try:
+                cal_list = service.calendarList().list().execute()
+                for cal in cal_list.get("items", []):
+                    cal_ids.add(cal["id"])
+            except Exception as e:
+                log_warn("calendar.get_today_events", f"カレンダー一覧取得スキップ: {e}")
 
-        # 3) 全カレンダーから予定を取得・重複排除
+        # 全カレンダーから予定を取得・重複排除
         seen_ids: set[str] = set()
         all_events: list[dict] = []
 
@@ -122,7 +168,7 @@ def get_today_events() -> list[dict]:
                 seen_ids.add(eid)
                 all_events.append(_item_to_event(item))
 
-        # 4) 時刻順ソート（終日イベントを先頭、その後 start 昇順）
+        # 時刻順ソート（終日イベントを先頭、その後 start 昇順）
         def sort_key(e):
             if e["all_day"]:
                 return "00:00"

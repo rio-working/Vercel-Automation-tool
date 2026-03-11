@@ -40,8 +40,29 @@ def _get_access_token() -> str:
     return resp.json()["access_token"]
 
 
-def get_today_tasks() -> list[dict]:
-    """今日が期限のタスク（またはすべてのタスク）を返す。"""
+def get_task_lists() -> list[dict]:
+    """全タスクリストを返す: [{id, title}, ...]"""
+    try:
+        access_token = _get_access_token()
+        headers = {"Authorization": f"Bearer {access_token}"}
+        resp = httpx.get(
+            "https://tasks.googleapis.com/tasks/v1/users/@me/lists",
+            headers=headers,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("items", [])
+        return [{"id": item["id"], "title": item.get("title", "")} for item in items]
+    except Exception as e:
+        log_error("tasks.get_task_lists", "タスクリスト取得エラー", e)
+        raise
+
+
+def get_today_tasks(list_ids: list[str] | None = None) -> list[dict]:
+    """今日が期限のタスク（またはすべてのタスク）を返す。
+    list_ids が None なら全リスト、指定があればそのリストのみ取得。
+    返却に list_id フィールドを追加（complete 時に使用）。
+    """
     try:
         access_token = _get_access_token()
         headers = {"Authorization": f"Bearer {access_token}"}
@@ -53,40 +74,47 @@ def get_today_tasks() -> list[dict]:
             timeout=10,
         )
         lists_resp.raise_for_status()
-        task_lists = lists_resp.json().get("items", [])
+        all_lists = lists_resp.json().get("items", [])
 
-        if not task_lists:
+        if not all_lists:
             return []
 
-        # 最初のタスクリストからタスクを取得（未完了のみ）
-        list_id = task_lists[0]["id"]
+        # list_ids が指定された場合はそのリストのみ、なければ全リスト
+        if list_ids is not None:
+            target_lists = [l for l in all_lists if l["id"] in list_ids]
+        else:
+            target_lists = all_lists
+
         today_str = date.today().isoformat()  # YYYY-MM-DD
 
-        tasks_resp = httpx.get(
-            f"https://tasks.googleapis.com/tasks/v1/lists/{list_id}/tasks",
-            headers=headers,
-            params={
-                "showCompleted": "false",
-                "showHidden": "false",
-                "maxResults": 20,
-            },
-            timeout=10,
-        )
-        tasks_resp.raise_for_status()
-        raw_tasks = tasks_resp.json().get("items", [])
-
         result = []
-        for t in raw_tasks:
-            due = t.get("due", "")
-            # due は RFC3339 形式: 2024-01-15T00:00:00.000Z
-            due_date = due[:10] if due else ""
-            result.append({
-                "id": t.get("id", ""),
-                "title": t.get("title", ""),
-                "due": due_date,
-                "is_today": due_date == today_str,
-                "notes": t.get("notes", ""),
-            })
+        for task_list in target_lists:
+            list_id = task_list["id"]
+            tasks_resp = httpx.get(
+                f"https://tasks.googleapis.com/tasks/v1/lists/{list_id}/tasks",
+                headers=headers,
+                params={
+                    "showCompleted": "false",
+                    "showHidden": "false",
+                    "maxResults": 20,
+                },
+                timeout=10,
+            )
+            tasks_resp.raise_for_status()
+            raw_tasks = tasks_resp.json().get("items", [])
+
+            for t in raw_tasks:
+                due = t.get("due", "")
+                # due は RFC3339 形式: 2024-01-15T00:00:00.000Z
+                due_date = due[:10] if due else ""
+                result.append({
+                    "id": t.get("id", ""),
+                    "title": t.get("title", ""),
+                    "due": due_date,
+                    "is_today": due_date == today_str,
+                    "notes": t.get("notes", ""),
+                    "list_id": list_id,
+                })
 
         return result
 
@@ -109,10 +137,13 @@ def _get_default_list_id() -> tuple[str, str]:
     return access_token, list_id
 
 
-def complete_task(task_id: str) -> None:
-    """指定タスクを完了済みにする。"""
+def complete_task(task_id: str, list_id: str | None = None) -> None:
+    """指定タスクを完了済みにする。list_id がなければデフォルトリストを使用。"""
     try:
-        access_token, list_id = _get_default_list_id()
+        if list_id:
+            access_token = _get_access_token()
+        else:
+            access_token, list_id = _get_default_list_id()
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",

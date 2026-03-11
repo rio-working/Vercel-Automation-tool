@@ -70,19 +70,36 @@ def chat(message: str, context: dict = None) -> str:
         return "申し訳ありません。AIとの通信でエラーが発生しました。"
 
 
-def generate_journal(completed_todos: list[str], agenda: list[str]) -> str:
-    """完了タスク＋予定から日報テキストを自動生成する。"""
+def generate_journal(
+    completed_todos: list[str],
+    agenda: list[str],
+    task_comments: list[dict] | None = None,
+    event_comments: list[dict] | None = None,
+) -> str:
+    """完了タスク＋予定から日報テキストを自動生成する。
+    task_comments: [{title, comment}, ...] タスクへのメモ
+    event_comments: [{title, comment}, ...] 予定へのメモ
+    """
     try:
         client = _get_client()
         todos_text = "\n".join([f"- {t}" for t in completed_todos]) if completed_todos else "なし"
         agenda_text = "\n".join([f"- {a}" for a in agenda]) if agenda else "なし"
+
+        comments_text = ""
+        if task_comments:
+            lines = "\n".join([f"- {c['title']}: {c['comment']}" for c in task_comments])
+            comments_text += f"\n\n【タスクメモ】\n{lines}"
+        if event_comments:
+            lines = "\n".join([f"- {c['title']}: {c['comment']}" for c in event_comments])
+            comments_text += f"\n\n【予定メモ】\n{lines}"
+
         prompt = f"""以下の情報をもとに、ビジネス向けの日報を生成してください。
 
 【完了したタスク】
 {todos_text}
 
 【本日の予定】
-{agenda_text}
+{agenda_text}{comments_text}
 
 日報形式:
 - 本日の成果（箇条書き）
