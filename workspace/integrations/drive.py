@@ -1,26 +1,46 @@
 """
 integrations/drive.py  ─  Google Drive ファイル操作
-サービスアカウントで指定フォルダにMarkdownファイルを保存する。
+ユーザーの OAuth リフレッシュトークンで指定フォルダにMarkdownファイルを保存する。
+サービスアカウントはストレージクォータを持たないため OAuth を使用。
 
-前提: 保存先フォルダをサービスアカウントのメールに共有しておくこと。
+必要な環境変数:
+  GOOGLE_CLIENT_ID
+  GOOGLE_CLIENT_SECRET
+  GOOGLE_REFRESH_TOKEN  （drive.file または drive スコープ付きで取得したもの）
 """
-import json
 import os
 
-from google.oauth2.service_account import Credentials
+import httpx
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 
 from core.logger import log_error
 
-_SCOPES = [
-    "https://www.googleapis.com/auth/drive",
-]
-
 
 def _get_drive_service():
-    info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
-    creds = Credentials.from_service_account_info(info, scopes=_SCOPES)
+    """リフレッシュトークンからアクセストークンを取得してDriveサービスを構築する。"""
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
+    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    refresh_token = os.environ.get("GOOGLE_REFRESH_TOKEN", "")
+
+    if not all([client_id, client_secret, refresh_token]):
+        raise ValueError("Google Drive用の環境変数が未設定です (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN)")
+
+    resp = httpx.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "grant_type": "refresh_token",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "refresh_token": refresh_token,
+        },
+        timeout=10,
+    )
+    resp.raise_for_status()
+    access_token = resp.json()["access_token"]
+
+    creds = Credentials(token=access_token)
     return build("drive", "v3", credentials=creds)
 
 
