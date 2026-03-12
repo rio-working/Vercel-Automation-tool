@@ -25,7 +25,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 # ── 認証情報（環境変数 → なければ対話入力） ───────────────────
 CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
-REDIRECT_URI  = "http://localhost:8765/callback"
+REDIRECT_URI  = "http://127.0.0.1:8765"
 
 # ── 必要なスコープ ─────────────────────────────────────────────
 SCOPES = [
@@ -78,7 +78,7 @@ print("ブラウザで認証画面を開きます...")
 webbrowser.open(auth_url)
 
 # ローカルサーバーでコールバックを待つ
-server = HTTPServer(("localhost", 8765), CallbackHandler)
+server = HTTPServer(("127.0.0.1", 8765), CallbackHandler)
 server.handle_request()
 
 if not auth_code_holder:
