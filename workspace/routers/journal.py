@@ -82,6 +82,7 @@ def create_journal(body: JournalCreate, _token=Depends(verify_token)):
 
         # Google Drive にMarkdownとして保存（フォルダID設定済みの場合）
         drive_file_id = None
+        drive_error = None
         try:
             from core.sheets import get_worksheet as _gws
             ws = _gws(APP_CONFIG["sheet_names"]["settings"])
@@ -97,9 +98,10 @@ def create_journal(body: JournalCreate, _token=Depends(verify_token)):
                 drive_file_id = upload_markdown(folder_id, filename, md)
                 log_info("journal.drive", f"Drive保存: {filename}")
         except Exception as drive_err:
-            log_error("journal.drive", "Drive保存エラー（スキップ）", drive_err)
+            drive_error = str(drive_err)
+            log_error("journal.drive", "Drive保存エラー", drive_err)
 
-        return {"success": True, "id": journal_id, "drive_file_id": drive_file_id}
+        return {"success": True, "id": journal_id, "drive_file_id": drive_file_id, "drive_error": drive_error}
     except Exception as e:
         log_error("journal.create", "日報保存エラー", e)
         raise HTTPException(status_code=500, detail=str(e))

@@ -1755,11 +1755,17 @@ async function saveJournal() {
   const date = document.getElementById('journal-date').value;
   if (!content) { alert('内容を入力してください'); return; }
   try {
-    await api('/api/journal', {
+    const data = await api('/api/journal', {
       method: 'POST',
       body: JSON.stringify({ date, content }),
     });
-    alert('日報を保存しました');
+    if (data.drive_error) {
+      alert(`スプレッドシートへの保存は完了しました。\n\n⚠️ Googleドライブへの保存に失敗しました:\n${data.drive_error}\n\nフォルダをサービスアカウントに共有（編集者権限）しているか確認してください。`);
+    } else if (data.drive_file_id) {
+      alert('日報を保存しました（スプレッドシート＋Googleドライブ）');
+    } else {
+      alert('日報を保存しました');
+    }
     loadJournalList();
   } catch (e) { alert('保存エラー: ' + e.message); }
 }
