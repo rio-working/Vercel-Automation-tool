@@ -22,9 +22,9 @@ import json
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# ── 認証情報（環境変数 or 直接入力） ──────────────────────────
-CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID", "")
-CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+# ── 認証情報（環境変数 → なければ対話入力） ───────────────────
+CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
 REDIRECT_URI  = "http://localhost:8765/callback"
 
 # ── 必要なスコープ ─────────────────────────────────────────────
@@ -34,9 +34,13 @@ SCOPES = [
 ]
 
 # ─────────────────────────────────────────────────────────────
+if not CLIENT_ID:
+    CLIENT_ID = input("GOOGLE_CLIENT_ID を入力してください: ").strip()
+if not CLIENT_SECRET:
+    CLIENT_SECRET = input("GOOGLE_CLIENT_SECRET を入力してください: ").strip()
+
 if not CLIENT_ID or not CLIENT_SECRET:
-    print("ERROR: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET が未設定です。")
-    print("環境変数にセットするか、スクリプト内の CLIENT_ID / CLIENT_SECRET に入力してください。")
+    print("ERROR: CLIENT_ID / CLIENT_SECRET が空です。")
     exit(1)
 
 auth_code_holder = []
