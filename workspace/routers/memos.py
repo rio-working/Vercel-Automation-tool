@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from config import APP_CONFIG
 from core.auth import verify_token
 from core.logger import log_error, log_info
-from core.sheets import append_row, get_all_values, get_worksheet, update_cell
+from core.sheets import append_row, get_all_values, get_worksheet, update_cell, _read_cache
 
 router = APIRouter()
 _SHEET = APP_CONFIG["sheet_names"]["memos"]
@@ -30,7 +30,7 @@ def _ensure_headers():
     rows = ws.get_all_values()
     if not rows:
         ws.append_row(_HEADERS)
-    elif rows[0][0] != "id":
+    elif not rows[0] or rows[0][0] != "id":
         ws.insert_row(_HEADERS, index=1)
 
 
@@ -81,6 +81,7 @@ def delete_memo(row: int, _token=Depends(verify_token)):
     try:
         ws = get_worksheet(_SHEET)
         ws.delete_rows(row)
+        _read_cache.pop(_SHEET, None)
         log_info("memos.delete", f"メモ削除: row={row}")
         return {"success": True}
     except Exception as e:

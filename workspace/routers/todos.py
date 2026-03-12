@@ -40,7 +40,7 @@ def _ensure_headers():
     rows = ws.get_all_values()
     if not rows:
         ws.append_row(_HEADERS)
-    elif rows[0][0] != "id":
+    elif not rows[0] or rows[0][0] != "id":
         ws.insert_row(_HEADERS, index=1)
 
 
