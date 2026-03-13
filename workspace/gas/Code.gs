@@ -1,11 +1,14 @@
 /**
- * Code.gs — Workspace GAS Web App ルーター
+ * Code.gs — Workspace GAS Web App ルーター（Google 系操作のみ）
  *
  * スクリプトプロパティ（Script Properties）に以下を設定すること:
- *   SPREADSHEET_ID       : 対象スプレッドシートのID
+ *   SPREADSHEET_ID       : 設定シート読み取り用スプレッドシートID
  *   API_SECRET_TOKEN     : Vercelと共通のAPIトークン
  *   GOOGLE_CALENDAR_ID   : メインカレンダーID（任意）
  *   GOOGLE_EXTRA_CALENDAR_IDS : 追加カレンダーIDのカンマ区切り（任意）
+ *
+ * 受け付けるアクション:
+ *   getAgenda / getCalendarLists / getTasks / completeTask / getTaskLists / saveToDrive
  */
 
 function doGet(e) {
@@ -39,12 +42,6 @@ function handleRequest(e, method) {
     let result;
 
     switch (action) {
-      // ── ToDo ──────────────────────────────
-      case 'getTodos':        result = getTodos(); break;
-      case 'createTodo':      result = createTodo(params.data); break;
-      case 'updateTodo':      result = updateTodo(Number(params.row), params.data); break;
-      case 'deleteTodo':      result = deleteTodo(Number(params.row)); break;
-
       // ── アジェンダ / カレンダー ────────────
       case 'getAgenda':          result = getAgenda(); break;
       case 'getCalendarLists':   result = getCalendarLists(); break;
@@ -54,29 +51,8 @@ function handleRequest(e, method) {
       case 'completeTask':  result = completeTask(params.task_id, params.list_id); break;
       case 'getTaskLists':  result = getTaskLists(); break;
 
-      // ── 日報 ──────────────────────────────
-      case 'getJournals':    result = getJournals(); break;
-      case 'createJournal':  result = createJournal(params.data); break;
-
-      // ── リンク ────────────────────────────
-      case 'getLinks':    result = getLinks(); break;
-      case 'createLink':  result = createLink(params.data); break;
-      case 'deleteLink':  result = deleteLink(Number(params.row)); break;
-
-      // ── メモ ──────────────────────────────
-      case 'getMemos':    result = getMemos(); break;
-      case 'createMemo':  result = createMemo(params.data); break;
-      case 'deleteMemo':  result = deleteMemo(Number(params.row)); break;
-
-      // ── お知らせ ──────────────────────────
-      case 'getAnnouncements': result = getAnnouncements(); break;
-
-      // ── 設定 ──────────────────────────────
-      case 'getSettings':    result = getSettings(); break;
-      case 'updateSetting':  result = updateSetting(params.key, params.value, params.description); break;
-
-      // ── ログ ──────────────────────────────
-      case 'getLogs': result = getLogs(); break;
+      // ── Drive 保存 ─────────────────────────
+      case 'saveToDrive':   result = saveToDrive(params.folder_id, params.date, params.content); break;
 
       default:
         return respond({ ok: false, error: 'Unknown action: ' + action });
@@ -85,7 +61,6 @@ function handleRequest(e, method) {
     return respond({ ok: true, data: result });
 
   } catch (err) {
-    try { gasLogError('Router', err.toString()); } catch (e2) {}
     return respond({ ok: false, error: err.toString() });
   }
 }

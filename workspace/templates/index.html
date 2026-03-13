@@ -1317,6 +1317,7 @@ body {
 // =============================================
 let API_TOKEN = localStorage.getItem('api_token') || '';
 let GAS_URL = '';
+let journalFolderId = '';
 
 // トークン未設定ならログイン画面表示
 if (!API_TOKEN) {
@@ -1431,9 +1432,10 @@ function switchWidget(name, el) {
 // =============================================
 async function loadAnnouncements() {
   try {
-    const announcements = await gasApi('getAnnouncements');
+    const r = await api('/api/announcements');
+    const announcements = r.announcements || [];
     const ticker = document.getElementById('ticker-global');
-    if (announcements && announcements.length > 0) {
+    if (announcements.length > 0) {
       ticker.style.display = 'block';
       const texts = announcements.map(a => a.content).join('　　★　　');
       ticker.innerHTML = `<div class="ticker-wrap"><div class="ticker-track"><span class="ticker-item">${texts}</span><span class="ticker-item">${texts}</span></div></div>`;
@@ -1448,7 +1450,8 @@ let allTodos = [];
 
 async function loadTodos() {
   try {
-    allTodos = await gasApi('getTodos') || [];
+    const r = await api('/api/todos');
+    allTodos = r.todos || [];
     renderTodos(allTodos);
   } catch (e) {
     document.getElementById('todo-list').innerHTML = `<div style="color:#ef4444;font-size:13px;">読み込みエラー: ${e.message}</div>`;
@@ -1499,7 +1502,10 @@ async function addTodo() {
       } catch {}
     }
 
-    await gasApi('createTodo', { data: { content, priority, effort } });
+    await api('/api/todos', {
+      method: 'POST',
+      body: JSON.stringify({ content, priority, effort }),
+    });
     showDot('todos');
     await loadTodos();
   } catch (e) {
@@ -1510,14 +1516,17 @@ async function addTodo() {
 
 async function toggleTodo(row, currentCompleted) {
   try {
-    await gasApi('updateTodo', { row, data: { completed: !currentCompleted } });
+    await api('/api/todos/' + row, {
+      method: 'PUT',
+      body: JSON.stringify({ completed: !currentCompleted }),
+    });
     await loadTodos();
   } catch (e) { alert('更新エラー: ' + e.message); }
 }
 
 async function deleteTodo(row) {
   try {
-    await gasApi('deleteTodo', { row });
+    await api('/api/todos/' + row, { method: 'DELETE' });
     document.getElementById(`todo-${row}`)?.remove();
     allTodos = allTodos.filter(t => t.row !== row);
   } catch (e) { alert('削除エラー: ' + e.message); }
@@ -1760,17 +1769,31 @@ async function saveJournal() {
   const content = document.getElementById('journal-textarea').value.trim();
   const date = document.getElementById('journal-date').value;
   if (!content) { alert('内容を入力してください'); return; }
+
+  // ステップ1: Vercel経由でシートに保存
   try {
-    const data = await gasApi('createJournal', { data: { date, content } });
-    if (data.drive_error) {
-      alert(`スプレッドシートへの保存は完了しました。\n\n⚠️ Googleドライブへの保存に失敗しました:\n${data.drive_error}`);
-    } else if (data.drive_file_id) {
-      alert('日報を保存しました（スプレッドシート＋Googleドライブ）');
-    } else {
-      alert('日報を保存しました');
+    await api('/api/journal', {
+      method: 'POST',
+      body: JSON.stringify({ date, content }),
+    });
+  } catch (e) {
+    alert('保存エラー: ' + e.message);
+    return;
+  }
+
+  // ステップ2: フォルダIDが設定済みならGAS経由でDriveに保存
+  let driveMsg = '';
+  if (journalFolderId) {
+    try {
+      await gasApi('saveToDrive', { folder_id: journalFolderId, date, content });
+      driveMsg = '\n✅ Googleドライブにも保存しました';
+    } catch (e) {
+      driveMsg = '\n⚠️ Googleドライブへの保存に失敗しました: ' + e.message;
     }
-    loadJournalList();
-  } catch (e) { alert('保存エラー: ' + e.message); }
+  }
+
+  alert('日報を保存しました' + driveMsg);
+  loadJournalList();
 }
 
 function clearJournal() {
@@ -1780,7 +1803,8 @@ function clearJournal() {
 async function loadJournalList() {
   try {
     const el = document.getElementById('journal-list');
-    const journals = await gasApi('getJournals') || [];
+    const r = await api('/api/journal');
+    const journals = r.journals || [];
     if (!journals.length) {
       el.innerHTML = '<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:16px;">日報はまだありません</div>';
       return;
@@ -1807,7 +1831,8 @@ let activeCategory = 'all';
 
 async function loadLinks() {
   try {
-    allLinks = await gasApi('getLinks') || [];
+    const r = await api('/api/links');
+    allLinks = r.links || [];
     renderLinks();
     renderCategories();
   } catch (e) {
@@ -1857,7 +1882,10 @@ async function addLink() {
   const category = document.getElementById('link-cat').value;
   if (!title || !url) { alert('タイトルとURLを入力してください'); return; }
   try {
-    await gasApi('createLink', { data: { title, url, category } });
+    await api('/api/links', {
+      method: 'POST',
+      body: JSON.stringify({ title, url, category }),
+    });
     document.getElementById('link-title').value = '';
     document.getElementById('link-url').value = '';
     await loadLinks();
@@ -1866,7 +1894,7 @@ async function addLink() {
 
 async function deleteLink(row) {
   try {
-    await gasApi('deleteLink', { row });
+    await api('/api/links/' + row, { method: 'DELETE' });
     allLinks = allLinks.filter(l => l.row !== row);
     renderLinks();
   } catch (e) { alert('削除エラー: ' + e.message); }
@@ -2068,7 +2096,10 @@ async function addTodoWithContent(content) {
         effort = ai.effort || '中';
       } catch {}
     }
-    await gasApi('createTodo', { data: { content, priority, effort } });
+    await api('/api/todos', {
+      method: 'POST',
+      body: JSON.stringify({ content, priority, effort }),
+    });
     await loadTodos();
   } catch (e) { alert('追加エラー: ' + e.message); }
 }
@@ -2106,7 +2137,8 @@ function selectMemoColor(color, el) {
 async function loadMemos() {
   const grid = document.getElementById('memos-grid');
   try {
-    allMemos = await gasApi('getMemos') || [];
+    const r = await api('/api/memos');
+    allMemos = r.memos || [];
     renderMemos();
   } catch (e) {
     grid.innerHTML = `<div style="color:#ef4444;font-size:13px;">読み込みエラー: ${e.message}</div>`;
@@ -2134,7 +2166,10 @@ async function addMemo() {
   const content = input.value.trim();
   if (!content) return;
   try {
-    await gasApi('createMemo', { data: { content, color: selectedMemoColor } });
+    await api('/api/memos', {
+      method: 'POST',
+      body: JSON.stringify({ content, color: selectedMemoColor }),
+    });
     input.value = '';
     await loadMemos();
   } catch (e) { alert('追加エラー: ' + e.message); }
@@ -2142,7 +2177,7 @@ async function addMemo() {
 
 async function deleteMemo(row) {
   try {
-    await gasApi('deleteMemo', { row });
+    await api('/api/memos/' + row, { method: 'DELETE' });
     await loadMemos();
   } catch (e) { alert('削除エラー: ' + e.message); }
 }
@@ -2167,18 +2202,20 @@ async function initSettings() {
     el.checked = localStorage.getItem(key) !== 'false';
   });
 
-  // 設定シートから取得
+  // 設定シートから取得（Vercel経由）
   let settingsData = {};
   try {
-    settingsData = await gasApi('getSettings') || {};
+    const r = await api('/api/settings');
+    settingsData = r.settings || {};
     const folderId = settingsData['journal_drive_folder_id'] || '';
+    journalFolderId = folderId;
     document.getElementById('drive-folder-id').value = folderId;
     if (folderId) {
       document.getElementById('drive-folder-status').textContent = '✅ フォルダID設定済み';
     }
   } catch {}
 
-  // Googleタスク リスト選択
+  // Googleタスク リスト選択（GAS経由）
   const taskLoadingEl = document.getElementById('task-lists-loading');
   const taskCheckEl   = document.getElementById('task-lists-checkboxes');
   try {
@@ -2201,7 +2238,7 @@ async function initSettings() {
     taskLoadingEl.textContent = '読み込めませんでした（Google Tasks 未設定）';
   }
 
-  // Googleカレンダー選択
+  // Googleカレンダー選択（GAS経由）
   const calLoadingEl = document.getElementById('calendar-lists-loading');
   const calCheckEl   = document.getElementById('calendar-lists-checkboxes');
   try {
@@ -2233,11 +2270,15 @@ async function saveDriveFolderId() {
     return;
   }
   try {
-    await gasApi('updateSetting', {
-      key: 'journal_drive_folder_id',
-      value: folderId,
-      description: '日報のMarkdown保存先 Google DriveフォルダID',
+    await api('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        key: 'journal_drive_folder_id',
+        value: folderId,
+        description: '日報のMarkdown保存先 Google DriveフォルダID',
+      }),
     });
+    journalFolderId = folderId;
     statusEl.textContent = '✅ 保存しました';
     statusEl.style.color = 'var(--accent-green)';
   } catch (e) {
@@ -2251,10 +2292,13 @@ async function saveTaskListSelection() {
   const selectedIds = Array.from(checkboxes).filter(c => c.checked).map(c => c.value);
   const statusEl = document.getElementById('task-lists-status');
   try {
-    await gasApi('updateSetting', {
-      key: 'task_selected_lists',
-      value: JSON.stringify(selectedIds),
-      description: '表示するGoogleタスクリストID一覧（JSON配列）',
+    await api('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        key: 'task_selected_lists',
+        value: JSON.stringify(selectedIds),
+        description: '表示するGoogleタスクリストID一覧（JSON配列）',
+      }),
     });
     statusEl.textContent = '✅ 保存しました';
     statusEl.style.color = 'var(--accent-green)';
@@ -2269,10 +2313,13 @@ async function saveCalendarSelection() {
   const selectedIds = Array.from(checkboxes).filter(c => c.checked).map(c => c.value);
   const statusEl = document.getElementById('calendar-lists-status');
   try {
-    await gasApi('updateSetting', {
-      key: 'calendar_selected_ids',
-      value: JSON.stringify(selectedIds),
-      description: '表示するGoogleカレンダーID一覧（JSON配列）',
+    await api('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        key: 'calendar_selected_ids',
+        value: JSON.stringify(selectedIds),
+        description: '表示するGoogleカレンダーID一覧（JSON配列）',
+      }),
     });
     statusEl.textContent = '✅ 保存しました';
     statusEl.style.color = 'var(--accent-green)';

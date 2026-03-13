@@ -4,8 +4,9 @@ main.py  ─  Workspace Next v3 FastAPI エントリポイント
 Vercel 担当:
   - UI 配信（index.html）
   - Gemini AI エンドポイント群
+  - スプレッドシート CRUD（ToDo / リンク / メモ / 設定 / ログ / お知らせ / 日報）
 
-Google 系操作（Sheets / Tasks / Calendar / Drive）は
+Google 系操作（Tasks / Calendar / Drive）は
 GAS Web App（GAS_WEB_APP_URL）に委譲。
 """
 import os
@@ -18,6 +19,7 @@ from pydantic import BaseModel
 from config import APP_CONFIG
 from core.auth import verify_token
 from core.logger import log_error, log_info
+from routers import todos, journal, links, announcements, logs, memos, settings_api
 
 app = FastAPI(
     title=APP_CONFIG["app_name"],
@@ -25,6 +27,15 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url=None,
 )
+
+# ── ルーター登録 ───────────────────────────────────────────────
+app.include_router(todos.router)
+app.include_router(journal.router)
+app.include_router(links.router)
+app.include_router(announcements.router)
+app.include_router(logs.router)
+app.include_router(memos.router)
+app.include_router(settings_api.router)
 
 
 # ── 設定 API ─────────────────────────────────────────────────
@@ -37,6 +48,36 @@ def get_config():
         "auth_mode": APP_CONFIG["auth"]["mode"],
         "gas_url":   os.environ.get("GAS_WEB_APP_URL", ""),
     }
+
+
+# ── 初期セットアップ ───────────────────────────────────────────
+@app.post("/api/setup")
+def setup(_token=Depends(verify_token)):
+    """スプレッドシートの全シート・ヘッダーを自動作成する。"""
+    try:
+        from core.sheets import get_worksheet
+        sn = APP_CONFIG["sheet_names"]
+
+        sheet_headers = {
+            sn["todos"]:         ["id", "content", "priority", "effort", "completed", "delete_flag", "created_at"],
+            sn["links"]:         ["id", "title", "url", "category", "created_at", "delete_flag"],
+            sn["journal"]:       ["id", "date", "content", "auto_summary", "created_at"],
+            sn["announcements"]: ["id", "content", "active", "expires_at"],
+            sn["memos"]:         ["id", "content", "color", "created_at"],
+            sn["settings"]:      ["key", "value", "description"],
+            sn["logs"]:          ["タイムスタンプ", "レベル", "発生元", "メッセージ"],
+        }
+
+        for sheet_name, headers in sheet_headers.items():
+            ws = get_worksheet(sheet_name)
+            if not ws.get_all_values():
+                ws.append_row(headers)
+
+        log_info("setup", "初期セットアップ完了")
+        return {"success": True, "message": "初期セットアップが完了しました"}
+    except Exception as e:
+        log_error("setup", "初期セットアップエラー", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── AI エンドポイント ─────────────────────────────────────────
