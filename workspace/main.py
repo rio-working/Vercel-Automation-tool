@@ -12,6 +12,7 @@ GAS Web App（GAS_WEB_APP_URL）に委譲。
 import os
 from pathlib import Path
 
+import json
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -45,10 +46,16 @@ async def gas_proxy(request: Request, _token=Depends(verify_token)):
     gas_url = os.environ.get("GAS_WEB_APP_URL", "")
     if not gas_url:
         raise HTTPException(status_code=503, detail="GAS_WEB_APP_URL が未設定です")
-    body = await request.json()
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(gas_url, json=body, follow_redirects=True, timeout=30)
-    return resp.json()
+    try:
+        body = await request.json()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"リクエストボディのパースエラー: {e}")
+    try:
+        with httpx.Client(follow_redirects=True, timeout=30) as client:
+            resp = client.post(gas_url, content=json.dumps(body))
+        return resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── 設定 API ─────────────────────────────────────────────────
