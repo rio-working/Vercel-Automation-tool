@@ -1025,6 +1025,7 @@ body {
       <div class="card-title">📝 インテリジェント日報</div>
       <div class="journal-btns">
         <button class="btn btn-primary" onclick="generateJournal()">🤖 AI自動生成</button>
+        <button class="btn btn-ghost btn-sm" onclick="evaluateJournal()">✍️ コーチ評価</button>
         <button class="btn btn-ghost btn-sm" onclick="saveJournal()">💾 保存</button>
         <button class="btn btn-ghost btn-sm" onclick="clearJournal()">🗑 クリア</button>
       </div>
@@ -1203,6 +1204,24 @@ body {
         </div>
       </div>
 
+      <!-- コーチプロンプト -->
+      <div class="settings-section">
+        <div class="settings-section-title">🧑‍🏫 コーチプロンプト</div>
+        <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+          <div>
+            <div class="label">日報評価用コーチプロンプト</div>
+            <div class="desc">日報評価時のAIキャラクター・視点を定義します（例：辛口のコーチとして…）</div>
+          </div>
+          <textarea id="coach-prompt-input" rows="4"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);font-size:13px;resize:vertical;"
+            placeholder="例: あなたは辛口のビジネスコーチです。この日報を読んで、改善点を率直に指摘し、より良い日報に書き直してください。"></textarea>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="saveCoachPrompt()">保存</button>
+            <span id="coach-prompt-status" style="font-size:12px;"></span>
+          </div>
+        </div>
+      </div>
+
       <!-- Googleタスク リスト選択 -->
       <div class="settings-section">
         <div class="settings-section-title">☑️ Googleタスク リスト</div>
@@ -1318,6 +1337,7 @@ body {
 let API_TOKEN = localStorage.getItem('api_token') || '';
 let GAS_URL = '';
 let journalFolderId = '';
+let coachPrompt = '';
 let selectedTaskListIds = null; // null=未取得（全表示）, 配列=絞り込み対象
 
 // トークン未設定ならログイン画面表示
@@ -1391,6 +1411,7 @@ async function loadUserSettings() {
     const sr = await api('/api/settings');
     const s = sr.settings || {};
     journalFolderId = s['journal_drive_folder_id'] || '';
+    coachPrompt = s['journal_coach_prompt'] || '';
     const rawTaskLists = s['task_selected_lists'] || '';
     selectedTaskListIds = rawTaskLists ? JSON.parse(rawTaskLists) : null;
   } catch {}
@@ -1786,6 +1807,28 @@ async function generateJournal() {
   } catch (e) {
     textarea.value = '';
     alert('日報生成エラー: ' + e.message);
+  } finally {
+    textarea.disabled = false;
+  }
+}
+
+async function evaluateJournal() {
+  const textarea = document.getElementById('journal-textarea');
+  const content = textarea.value.trim();
+  if (!content) { alert('日報を入力または生成してから評価してください'); return; }
+  if (!coachPrompt) { alert('設定画面でコーチプロンプトを設定してください'); return; }
+
+  textarea.value = '評価中…';
+  textarea.disabled = true;
+  try {
+    const data = await api('/api/ai/evaluate-journal', {
+      method: 'POST',
+      body: JSON.stringify({ content, coach_prompt: coachPrompt }),
+    });
+    textarea.value = data.journal;
+  } catch (e) {
+    textarea.value = content;
+    alert('評価エラー: ' + e.message);
   } finally {
     textarea.disabled = false;
   }
@@ -2233,6 +2276,9 @@ async function initSettings() {
     const folderId = settingsData['journal_drive_folder_id'] || '';
     journalFolderId = folderId;
     document.getElementById('drive-folder-id').value = folderId;
+    const coachPromptVal = settingsData['journal_coach_prompt'] || '';
+    coachPrompt = coachPromptVal;
+    document.getElementById('coach-prompt-input').value = coachPromptVal;
     const rawTaskLists = settingsData['task_selected_lists'] || '';
     try { selectedTaskListIds = rawTaskLists ? JSON.parse(rawTaskLists) : null; } catch { selectedTaskListIds = null; }
     if (folderId) {
@@ -2304,6 +2350,27 @@ async function saveDriveFolderId() {
       }),
     });
     journalFolderId = folderId;
+    statusEl.textContent = '✅ 保存しました';
+    statusEl.style.color = 'var(--accent-green)';
+  } catch (e) {
+    statusEl.textContent = '❌ 保存エラー: ' + e.message;
+    statusEl.style.color = '#ef4444';
+  }
+}
+
+async function saveCoachPrompt() {
+  const val = document.getElementById('coach-prompt-input').value.trim();
+  const statusEl = document.getElementById('coach-prompt-status');
+  try {
+    await api('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        key: 'journal_coach_prompt',
+        value: val,
+        description: '日報評価用コーチプロンプト',
+      }),
+    });
+    coachPrompt = val;
     statusEl.textContent = '✅ 保存しました';
     statusEl.style.color = 'var(--accent-green)';
   } catch (e) {

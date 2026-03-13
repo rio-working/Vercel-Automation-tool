@@ -134,6 +134,11 @@ class StructureChatRequest(BaseModel):
     messages: list[dict] = []
 
 
+class EvaluateJournalRequest(BaseModel):
+    content: str
+    coach_prompt: str
+
+
 @app.post("/api/ai/chat")
 def ai_chat(body: ChatRequest, _token=Depends(verify_token)):
     try:
@@ -179,6 +184,17 @@ def ai_suggest_focus(body: SuggestFocusRequest, _token=Depends(verify_token)):
         return {"suggestion": result}
     except Exception as e:
         log_error("ai.suggest_focus", "集中タイム提案エラー", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ai/evaluate-journal")
+def ai_evaluate_journal(body: EvaluateJournalRequest, _token=Depends(verify_token)):
+    try:
+        from integrations.gemini import evaluate_journal
+        result = evaluate_journal(body.content, body.coach_prompt)
+        return {"journal": result}
+    except Exception as e:
+        log_error("ai.evaluate_journal", "日報評価エラー", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 

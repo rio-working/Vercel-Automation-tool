@@ -151,6 +151,21 @@ JSONや説明文は不要です。上記フォーマットのテキストのみ�
         return "会話の整理に失敗しました。"
 
 
+def evaluate_journal(content: str, coach_prompt: str) -> str:
+    """ユーザー定義プロンプトで日報を評価・書き直す。"""
+    try:
+        client = _get_client()
+        prompt = f"""{coach_prompt}
+
+【日報】
+{content}"""
+        response = client.models.generate_content(model=_MODEL_NAME, contents=prompt)
+        return response.text.strip()
+    except Exception as e:
+        log_error("gemini.evaluate_journal", "日報評価エラー", e)
+        return "日報の評価に失敗しました。"
+
+
 def suggest_focus(agenda: list[dict]) -> str:
     """カレンダー予定の隙間時間を分析して集中タイムを提案する。"""
     try:
