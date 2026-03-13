@@ -1351,14 +1351,17 @@ function saveToken() {
   });
 }
 
-// GAS Web App 呼び出し共通関数
+// GAS Web App 呼び出し共通関数（Vercelプロキシ経由でCORSを回避）
 async function gasApi(action, params) {
-  if (!GAS_URL) throw new Error('GAS URLが未設定です。Vercelの環境変数 GAS_WEB_APP_URL を設定してください。');
-  const res = await fetch(GAS_URL, {
+  const res = await fetch('/api/gas-proxy', {
     method: 'POST',
+    headers: HEADERS,
     body: JSON.stringify(Object.assign({ action, token: API_TOKEN }, params || {})),
   });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || 'GASエラー');
   return json.data;

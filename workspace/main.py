@@ -12,7 +12,8 @@ GAS Web App（GAS_WEB_APP_URL）に委譲。
 import os
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException
+import httpx
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
@@ -36,6 +37,18 @@ app.include_router(announcements.router)
 app.include_router(logs.router)
 app.include_router(memos.router)
 app.include_router(settings_api.router)
+
+
+# ── GAS プロキシ ──────────────────────────────────────────────
+@app.post("/api/gas-proxy")
+async def gas_proxy(request: Request, _token=Depends(verify_token)):
+    gas_url = os.environ.get("GAS_WEB_APP_URL", "")
+    if not gas_url:
+        raise HTTPException(status_code=503, detail="GAS_WEB_APP_URL が未設定です")
+    body = await request.json()
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(gas_url, json=body, follow_redirects=True, timeout=30)
+    return resp.json()
 
 
 # ── 設定 API ─────────────────────────────────────────────────
