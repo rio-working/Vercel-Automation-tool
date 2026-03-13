@@ -51,8 +51,16 @@ async def gas_proxy(request: Request, _token=Depends(verify_token)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"リクエストボディのパースエラー: {e}")
     try:
-        with httpx.Client(follow_redirects=True, timeout=30) as client:
-            resp = client.post(gas_url, content=json.dumps(body))
+        raw_body = json.dumps(body)
+        with httpx.Client(timeout=30) as client:
+            # GAS は 302 リダイレクトを返す。httpx はデフォルトで POST→GET に変換するため
+            # リダイレクト先にも手動で POST する
+            resp = client.post(gas_url, content=raw_body, follow_redirects=False)
+            if resp.is_redirect:
+                location = resp.headers.get("location", "")
+                resp = client.post(location, content=raw_body, follow_redirects=False)
+        if not resp.text:
+            raise ValueError("GASからの応答が空です")
         return resp.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
