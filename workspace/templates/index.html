@@ -1342,6 +1342,7 @@ function saveToken() {
       document.getElementById('sidebar').style.display = '';
       document.getElementById('main').style.display = '';
       document.getElementById('fab').style.display = '';
+      await loadUserSettings();
       loadTodos();
       loadAnnouncements();
     } else {
@@ -1385,6 +1386,16 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
+async function loadUserSettings() {
+  try {
+    const sr = await api('/api/settings');
+    const s = sr.settings || {};
+    journalFolderId = s['journal_drive_folder_id'] || '';
+    const rawTaskLists = s['task_selected_lists'] || '';
+    selectedTaskListIds = rawTaskLists ? JSON.parse(rawTaskLists) : null;
+  } catch {}
+}
+
 // =============================================
 // テーマ
 // =============================================
@@ -1420,6 +1431,8 @@ function switchWidget(name, el) {
   if (w) { w.classList.add('active'); w.classList.add('fade-in'); setTimeout(()=>w.classList.remove('fade-in'),300); }
   if (el) el.classList.add('active');
   activeWidget = name;
+  const dot = document.getElementById('dot-' + name);
+  if (dot) dot.classList.remove('show');
 
   // 遅延読み込み
   if (name === 'todos') loadTodos();
@@ -1607,9 +1620,6 @@ async function completeTask(taskId, listId, btn) {
   btn.classList.add('checked');
   btn.textContent = '✓';
   try {
-    const url = listId
-      ? `/api/tasks/${taskId}/complete?list_id=${encodeURIComponent(listId)}`
-      : `/api/tasks/${taskId}/complete`;
     await gasApi('completeTask', { task_id: taskId, list_id: listId || null });
     const wrap = document.getElementById('task-wrap-' + taskId);
     const el = document.getElementById('task-' + taskId);
@@ -2135,9 +2145,6 @@ function showDot(widgetId) {
   }
 }
 
-// ウィジェット切り替え時にドットを消す
-const origSwitch = switchWidget;
-
 // =============================================
 // メモ（付箋）
 // =============================================
@@ -2454,6 +2461,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const config = await fetch('/api/config', { headers: HEADERS }).then(r => r.json());
       GAS_URL = config.gas_url || '';
     } catch {}
+    await loadUserSettings();
     applyWidgetVisibility();
     loadTodos();
     loadAnnouncements();
