@@ -21,3 +21,7 @@ jobs:
       - name: Push to GAS
         working-directory: workspace/gas
         run: clasp push --force
+
+      - name: Deploy new version
+        working-directory: workspace/gas
+        run: clasp deploy --deploymentId AKfycbxWjoeMPIHe7n9A1LiQd5pOwjbFtL1A7X9KC8RgNc9Qai8AfH62lPnu-dNVXtT2GEX7
