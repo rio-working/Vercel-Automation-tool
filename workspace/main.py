@@ -53,12 +53,12 @@ async def gas_proxy(request: Request, _token=Depends(verify_token)):
     try:
         raw_body = json.dumps(body)
         with httpx.Client(timeout=30) as client:
-            # GAS は 302 リダイレクトを返す。httpx はデフォルトで POST→GET に変換するため
-            # リダイレクト先にも手動で POST する
+            # GAS は POST を実行後 302 でレスポンス取得先 URL にリダイレクトする
+            # リダイレクト先（script.googleusercontent.com）は GET で取得する
             resp = client.post(gas_url, content=raw_body, follow_redirects=False)
             if resp.is_redirect:
                 location = resp.headers.get("location", "")
-                resp = client.post(location, content=raw_body, follow_redirects=False)
+                resp = client.get(location, follow_redirects=True)
         if not resp.text:
             raise ValueError("GASからの応答が空です")
         return resp.json()
