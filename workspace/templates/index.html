@@ -1318,6 +1318,7 @@ body {
 let API_TOKEN = localStorage.getItem('api_token') || '';
 let GAS_URL = '';
 let journalFolderId = '';
+let selectedTaskListIds = null; // null=未取得（全表示）, 配列=絞り込み対象
 
 // トークン未設定ならログイン画面表示
 if (!API_TOKEN) {
@@ -1627,7 +1628,19 @@ async function completeTask(taskId, listId, btn) {
 
 async function loadTasks() {
   try {
-    const tasks = await gasApi('getTasks') || [];
+    // 設定が未取得の場合はVercelから取得
+    if (selectedTaskListIds === null) {
+      try {
+        const sr = await api('/api/settings');
+        const raw = (sr.settings || {})['task_selected_lists'] || '';
+        selectedTaskListIds = raw ? JSON.parse(raw) : [];
+      } catch { selectedTaskListIds = []; }
+    }
+    let tasks = await gasApi('getTasks') || [];
+    // フロントエンドで選択済みリストに絞り込む
+    if (selectedTaskListIds && selectedTaskListIds.length > 0) {
+      tasks = tasks.filter(t => selectedTaskListIds.includes(t.list_id));
+    }
     agendaTasks = tasks;
     const section = document.getElementById('tasks-section');
     const listEl = document.getElementById('tasks-list');
@@ -2213,6 +2226,8 @@ async function initSettings() {
     const folderId = settingsData['journal_drive_folder_id'] || '';
     journalFolderId = folderId;
     document.getElementById('drive-folder-id').value = folderId;
+    const rawTaskLists = settingsData['task_selected_lists'] || '';
+    try { selectedTaskListIds = rawTaskLists ? JSON.parse(rawTaskLists) : null; } catch { selectedTaskListIds = null; }
     if (folderId) {
       document.getElementById('drive-folder-status').textContent = '✅ フォルダID設定済み';
     }
@@ -2303,6 +2318,7 @@ async function saveTaskListSelection() {
         description: '表示するGoogleタスクリストID一覧（JSON配列）',
       }),
     });
+    selectedTaskListIds = selectedIds;
     statusEl.textContent = '✅ 保存しました';
     statusEl.style.color = 'var(--accent-green)';
   } catch (e) {
