@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loading...</title>
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" async></script>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
   :root {
@@ -395,7 +395,7 @@ async function init() {
     document.getElementById('appIcon').textContent = cfg.icon || '🎙️';
     document.documentElement.setAttribute('data-theme', cfg.theme || 'blue');
     document.title = cfg.app_name;
-    mermaid.initialize({ startOnLoad: false, theme: 'default' });
+    if (typeof mermaid !== 'undefined') mermaid.initialize({ startOnLoad: false, theme: 'default' });
   } catch (e) {
     showToast('設定取得エラー: ' + e.message, 'error');
   } finally {
@@ -748,6 +748,7 @@ async function renderMermaid(code) {
     return;
   }
   try {
+    if (typeof mermaid === 'undefined') throw new Error('Mermaidライブラリ読み込み中です。しばらくしてから再度お試しください。');
     const { svg } = await mermaid.render('mermaid-svg-' + Date.now(), code);
     el.innerHTML = svg;
   } catch (e) {
