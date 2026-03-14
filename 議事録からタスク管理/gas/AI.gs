@@ -102,12 +102,12 @@ function uploadToGeminiFiles(apiKey, fileBlob, fileSize, mimeType, displayName) 
   });
 
   // resumable upload の開始
+  // ※ "content-length" を含むヘッダー名はGASが全てブロックするため除外
   const initRes = UrlFetchApp.fetch(`${GEMINI_FILES_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'X-Goog-Upload-Protocol': 'resumable',
       'X-Goog-Upload-Command': 'start',
-      'X-Goog-Upload-Header-Content-Length': String(fileSize),
       'X-Goog-Upload-Header-Content-Type': mimeType,
       'Content-Type': 'application/json',
     },
