@@ -8,7 +8,7 @@
  *   4. 結果をシートに保存 → 通知
  */
 
-const GEMINI_MODEL = 'gemini-2.0-flash-exp';
+const GEMINI_MODEL = 'gemini-2.0-flash';
 const GEMINI_FILES_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
 const GEMINI_GENERATE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
 

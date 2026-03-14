@@ -123,10 +123,11 @@ async def process_meeting(
 
     try:
         async with httpx.AsyncClient() as client:
-            # タイムアウト8秒（Vercel 10秒制限内）で送信のみ
             await client.post(gas_url, json=payload, timeout=8.0)
+    except httpx.TimeoutException:
+        # タイムアウトはGAS処理継続中として正常扱い（GASは最大6分かかる）
+        log_info("process_meeting", f"GAS処理継続中（タイムアウト正常）: {meeting_id}")
     except Exception:
-        # GASへの送信失敗時はステータスをエラーに
         ws.update_cell(row_index, COL_STATUS + 1, "エラー")
         log_error("process_meeting", f"GAS呼び出し失敗: {meeting_id}")
         raise HTTPException(status_code=500, detail="GASへの処理依頼に失敗しました")
