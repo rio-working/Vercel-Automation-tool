@@ -52,7 +52,8 @@ function processMeeting(meetingId, driveFileId, prevMeetingId) {
       throw new Error('Driveダウンロード失敗: ' + dlRes.getContentText().substring(0, 200));
     }
     const mimeType = file.getMimeType() || 'audio/mp4';
-    const fileBlob = dlRes.getBlob().setContentType(mimeType).setName(file.getName());
+    // getContent()でバイト配列取得→Utilities.newBlob()でサイズ確定（Content-Length問題回避）
+    const fileBlob = Utilities.newBlob(dlRes.getContent(), mimeType, file.getName());
 
     // 3. Gemini Files API にアップロード（blobを直接渡す）
     const fileUri = uploadToGeminiFiles(apiKey, fileBlob, fileSize, mimeType, file.getName());
