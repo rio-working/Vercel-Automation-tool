@@ -3,7 +3,9 @@ core/logger.py  ─  ログ管理
 GASテンプレートの Utils.gs（ログ部分）に相当。
 INFO / WARN / ERROR の3レベルをログシートに記録する。
 """
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+_JST = timezone(timedelta(hours=9))
 
 from config import APP_CONFIG
 from core.sheets import get_worksheet, append_row
@@ -22,7 +24,7 @@ def _ensure_headers() -> None:
 def _write(level: str, source: str, message: str) -> None:
     try:
         _ensure_headers()
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(_JST).strftime("%Y-%m-%d %H:%M:%S")
         append_row(_LOG_SHEET, [now, level, source, message])
     except Exception:
         pass  # ログ書き込み失敗は処理を止めない

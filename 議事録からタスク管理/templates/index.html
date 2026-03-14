@@ -518,7 +518,7 @@ async function createProject() {
   const desc = document.getElementById('newProjectDesc').value.trim();
   if (!name) { showToast('プロジェクト名を入力してください', 'error'); return; }
   try {
-    await api('/api/projects', {
+    const res = await api('/api/projects', {
       method: 'POST',
       body: JSON.stringify({ name, description: desc }),
     });
@@ -527,6 +527,8 @@ async function createProject() {
     document.getElementById('newProjectName').value = '';
     document.getElementById('newProjectDesc').value = '';
     await loadProjects();
+    // 作成したプロジェクトを自動選択
+    selectProject(res.id, name, desc);
   } catch (e) {
     showToast('作成エラー: ' + e.message, 'error');
   }

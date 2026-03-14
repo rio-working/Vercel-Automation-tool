@@ -4,7 +4,9 @@ routers/meetings.py  ─  会議 CRUD + GAS AI処理依頼 API
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+_JST = timezone(timedelta(hours=9))
 from typing import Optional
 
 import httpx
@@ -74,7 +76,7 @@ def list_meetings(
 def create_meeting(body: MeetingCreate, _token=Depends(verify_token)):
     try:
         meeting_id = str(uuid.uuid4())[:8]
-        date = body.date or datetime.now().strftime("%Y-%m-%d")
+        date = body.date or datetime.now(_JST).strftime("%Y-%m-%d")
         append_row(_SHEET, [
             meeting_id, body.project_id, body.name, date,
             "待機中", "", "", "", ""

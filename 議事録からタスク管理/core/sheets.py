@@ -14,6 +14,7 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 # 同一Lambda実行内でクライアントを再利用してAPI呼び出し回数を削減
 _client_cache: gspread.Client | None = None
 _spreadsheet_cache: gspread.Spreadsheet | None = None
+_worksheet_cache: dict = {}
 
 
 def _get_client() -> gspread.Client:
@@ -34,11 +35,14 @@ def _get_spreadsheet() -> gspread.Spreadsheet:
 
 def get_worksheet(sheet_name: str) -> gspread.Worksheet:
     """シートを取得。存在しなければ自動作成する。"""
-    ss = _get_spreadsheet()
-    try:
-        return ss.worksheet(sheet_name)
-    except gspread.WorksheetNotFound:
-        return ss.add_worksheet(title=sheet_name, rows=1000, cols=26)
+    global _worksheet_cache
+    if sheet_name not in _worksheet_cache:
+        ss = _get_spreadsheet()
+        try:
+            _worksheet_cache[sheet_name] = ss.worksheet(sheet_name)
+        except gspread.WorksheetNotFound:
+            _worksheet_cache[sheet_name] = ss.add_worksheet(title=sheet_name, rows=1000, cols=26)
+    return _worksheet_cache[sheet_name]
 
 
 def get_all_values(sheet_name: str) -> list[list]:

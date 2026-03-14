@@ -2,7 +2,9 @@
 routers/projects.py  ─  プロジェクト CRUD API
 """
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+_JST = timezone(timedelta(hours=9))
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -47,7 +49,7 @@ def list_projects(_token=Depends(verify_token)):
 def create_project(body: ProjectCreate, _token=Depends(verify_token)):
     try:
         project_id = str(uuid.uuid4())[:8]
-        created_at = datetime.now().strftime("%Y-%m-%d")
+        created_at = datetime.now(_JST).strftime("%Y-%m-%d")
         append_row(_SHEET, [project_id, body.name, created_at, body.description])
         log_info("create_project", f"プロジェクト作成: {body.name}")
         return {"success": True, "id": project_id, "name": body.name}
