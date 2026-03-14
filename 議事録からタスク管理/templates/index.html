@@ -878,7 +878,9 @@ function openNewProjectModal() {
 }
 function openNewMeetingModal() {
   if (!state.currentProjectId) return;
-  document.getElementById('newMeetingDate').value = new Date().toISOString().split('T')[0];
+  const _now = new Date();
+  const _jst = new Date(_now.getTime() + 9 * 60 * 60 * 1000);
+  document.getElementById('newMeetingDate').value = _jst.toISOString().split('T')[0];
   document.getElementById('newMeetingModal').classList.remove('hidden');
 }
 function openSetupModal() {

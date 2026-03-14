@@ -49,32 +49,31 @@ def get_config():
 @app.post("/api/setup")
 def setup(_token=Depends(verify_token)):
     """スプレッドシートにシート・ヘッダーを自動作成する。"""
+    def _set_header(ws, headers: list):
+        """ヘッダー行を強制セット（空・ズレどちらも対応）。"""
+        vals = ws.get_all_values()
+        if not vals:
+            ws.append_row(headers)
+        elif vals[0] != headers:
+            ws.update("A1", [headers])
+
     try:
         sn = APP_CONFIG["sheet_names"]
 
-        # プロジェクトシート
         ws_p = get_worksheet(sn["projects"])
-        if not ws_p.get_all_values():
-            ws_p.append_row(["ID", "プロジェクト名", "作成日", "説明"])
+        _set_header(ws_p, ["ID", "プロジェクト名", "作成日", "説明"])
 
-        # 会議履歴シート
         ws_m = get_worksheet(sn["meetings"])
-        if not ws_m.get_all_values():
-            ws_m.append_row([
-                "ID", "プロジェクトID", "会議名", "日付",
-                "ステータス", "文字起こし", "議事録JSON", "MermaidCode", "ガントJSON"
-            ])
+        _set_header(ws_m, [
+            "ID", "プロジェクトID", "会議名", "日付",
+            "ステータス", "文字起こし", "議事録JSON", "MermaidCode", "ガントJSON"
+        ])
 
-        # 設定シート
         ws_s = get_worksheet(sn["settings"])
-        if not ws_s.get_all_values():
-            ws_s.append_row(["キー", "値"])
-            ws_s.append_row(["アプリ名", APP_CONFIG["app_name"]])
+        _set_header(ws_s, ["キー", "値"])
 
-        # ログシート
         ws_l = get_worksheet(sn["logs"])
-        if not ws_l.get_all_values():
-            ws_l.append_row(["タイムスタンプ", "レベル", "発生元", "メッセージ"])
+        _set_header(ws_l, ["タイムスタンプ", "レベル", "発生元", "メッセージ"])
 
         log_info("setup", "初期セットアップ完了")
         return {"success": True, "message": "初期セットアップが完了しました"}
