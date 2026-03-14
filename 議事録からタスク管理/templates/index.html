@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="blue">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading...</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root {
+    --accent: #4a86e8;
+    --accent-light: #dbeafe;
+    --accent-hover: #3b6fd4;
+    --badge-bg: #eff6ff;
+    --badge-text: #1d4ed8;
+  }
+  [data-theme="green"]  { --accent:#16a34a; --accent-light:#dcfce7; --accent-hover:#15803d; --badge-bg:#f0fdf4; --badge-text:#166534; }
+  [data-theme="purple"] { --accent:#7c3aed; --accent-light:#ede9fe; --accent-hover:#6d28d9; --badge-bg:#f5f3ff; --badge-text:#5b21b6; }
+
+  .btn-accent { background-color: var(--accent); }
+  .btn-accent:hover { background-color: var(--accent-hover); }
+  .accent-bg { background-color: var(--accent-light); }
+  .accent-text { color: var(--accent); }
+  .accent-border { border-color: var(--accent); }
+
+  #loading {
+    position: fixed; inset: 0; z-index: 9999;
+    background: white; display: flex;
+    flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  }
+  .spinner {
+    width: 48px; height: 48px; border: 4px solid #e5e7eb;
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9998;
+    min-width: 260px; max-width: 400px;
+    padding: 12px 16px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    display: flex; align-items: center; gap: 10px;
+    animation: slideIn .25s ease; font-size: 14px;
+  }
+  .toast-success { background: #dcfce7; color: #166534; border-left: 4px solid #16a34a; }
+  .toast-error   { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; }
+  .toast-info    { background: var(--accent-light); color: var(--accent); border-left: 4px solid var(--accent); }
+  @keyframes slideIn { from { transform: translateX(110%); opacity:0; } to { transform: translateX(0); opacity:1; } }
+
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-box {
+    background: white; border-radius: 12px; width: 100%; max-width: 560px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    animation: popIn .2s ease;
+  }
+  @keyframes popIn { from { transform: scale(.95); opacity:0; } to { transform: scale(1); opacity:1; } }
+
+  .sidebar-item { cursor: pointer; padding: 8px 12px; border-radius: 8px; transition: background .15s; }
+  .sidebar-item:hover { background: var(--accent-light); }
+  .sidebar-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500;
+  }
+  .status-waiting    { background: #f3f4f6; color: #6b7280; }
+  .status-processing { background: #fef3c7; color: #92400e; }
+  .status-done       { background: #dcfce7; color: #166534; }
+  .status-error      { background: #fee2e2; color: #991b1b; }
+
+  .tab-btn { padding: 8px 16px; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; }
+  .tab-btn.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+  .mermaid-container svg { max-width: 100%; height: auto; }
+
+  .gantt-bar {
+    height: 24px; border-radius: 4px; background: var(--accent);
+    opacity: 0.85; display: flex; align-items: center; padding: 0 8px;
+    font-size: 11px; color: white; white-space: nowrap; overflow: hidden;
+  }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+<!-- ローディング -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p class="text-gray-500">読み込み中...</p>
+</div>
+
+<!-- ── レイアウト ──────────────────────────── -->
+<div id="app" class="hidden flex h-screen overflow-hidden">
+
+  <!-- サイドバー -->
+  <aside class="w-64 bg-white border-r flex flex-col shrink-0">
+    <div class="p-4 border-b">
+      <div class="flex items-center gap-2">
+        <span id="appIcon" class="text-2xl">🎙️</span>
+        <span id="appName" class="font-bold text-gray-800 text-sm leading-tight">議事録AI分析ツール</span>
+      </div>
+    </div>
+
+    <div class="p-3 border-b">
+      <button onclick="openNewProjectModal()"
+        class="w-full btn-accent text-white py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-1">
+        <span class="material-icons text-base">add</span>
+        新規プロジェクト
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-2">
+      <p class="text-xs text-gray-400 px-2 mb-1 mt-1">プロジェクト</p>
+      <div id="projectList"></div>
+    </div>
+
+    <div class="p-3 border-t">
+      <button onclick="openSetupModal()"
+        class="w-full text-gray-500 hover:text-gray-700 py-1 px-3 rounded text-xs flex items-center gap-1">
+        <span class="material-icons text-sm">settings</span>
+        初期セットアップ
+      </button>
+    </div>
+  </aside>
+
+  <!-- メインエリア -->
+  <main class="flex-1 overflow-y-auto flex flex-col">
+
+    <!-- ヘッダー -->
+    <div class="bg-white border-b px-6 py-3 flex items-center justify-between shrink-0">
+      <div>
+        <h1 id="projectTitle" class="font-bold text-lg text-gray-800">プロジェクトを選択</h1>
+        <p id="projectDesc" class="text-xs text-gray-400"></p>
+      </div>
+      <button id="addMeetingBtn" onclick="openNewMeetingModal()" disabled
+        class="btn-accent text-white py-2 px-4 rounded-lg text-sm font-medium flex items-center gap-1 disabled:opacity-40">
+        <span class="material-icons text-base">mic</span>
+        会議を追加
+      </button>
+    </div>
+
+    <!-- 会議一覧 -->
+    <div class="flex-1 p-6">
+      <div id="emptyState" class="flex flex-col items-center justify-center h-full text-gray-400">
+        <span class="material-icons text-6xl mb-4">folder_open</span>
+        <p>左のサイドバーからプロジェクトを選択してください</p>
+      </div>
+
+      <div id="meetingSection" class="hidden">
+        <div class="bg-white rounded-xl border overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b">
+              <tr>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">会議名</th>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">日付</th>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">ステータス</th>
+                <th class="text-right px-4 py-3 font-medium text-gray-600">操作</th>
+              </tr>
+            </thead>
+            <tbody id="meetingTable"></tbody>
+          </table>
+          <div id="meetingEmpty" class="hidden p-8 text-center text-gray-400 text-sm">
+            会議がありません。「会議を追加」から始めてください。
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── 結果パネル（オーバーレイ）──────────────── -->
+<div id="resultOverlay" class="hidden modal-overlay" onclick="closeResult(event)">
+  <div class="modal-box" style="max-width:860px;" onclick="event.stopPropagation()">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h2 id="resultTitle" class="font-bold text-lg"></h2>
+      <button onclick="closeResult()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- タブ -->
+    <div class="flex border-b px-4">
+      <button class="tab-btn active" onclick="switchTab('minutes', this)">📋 議事録</button>
+      <button class="tab-btn" onclick="switchTab('tasks', this)">✅ タスク</button>
+      <button class="tab-btn" onclick="switchTab('flowchart', this)">📊 フローチャート</button>
+      <button class="tab-btn" onclick="switchTab('gantt', this)">📅 ガントチャート</button>
+      <button class="tab-btn" onclick="switchTab('transcript', this)">📝 文字起こし</button>
+    </div>
+
+    <div class="p-4">
+      <!-- 議事録タブ -->
+      <div id="tab-minutes">
+        <div id="minutesContent" class="space-y-4 text-sm"></div>
+      </div>
+
+      <!-- タスクタブ -->
+      <div id="tab-tasks" class="hidden">
+        <div id="tasksContent" class="space-y-4 text-sm"></div>
+      </div>
+
+      <!-- フローチャートタブ -->
+      <div id="tab-flowchart" class="hidden">
+        <div id="flowchartContent" class="mermaid-container overflow-auto p-2"></div>
+        <details class="mt-3">
+          <summary class="text-xs text-gray-400 cursor-pointer">Mermaidコードを表示</summary>
+          <pre id="mermaidCode" class="text-xs bg-gray-50 p-3 rounded mt-2 overflow-auto"></pre>
+        </details>
+      </div>
+
+      <!-- ガントチャートタブ -->
+      <div id="tab-gantt" class="hidden">
+        <div id="ganttContent" class="overflow-auto"></div>
+      </div>
+
+      <!-- 文字起こしタブ -->
+      <div id="tab-transcript" class="hidden">
+        <pre id="transcriptContent" class="text-xs bg-gray-50 p-3 rounded overflow-auto whitespace-pre-wrap max-h-96"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 処理中パネル ─────────────────────────── -->
+<div id="processingOverlay" class="hidden modal-overlay">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="p-6 text-center">
+      <div class="spinner mx-auto mb-4"></div>
+      <p class="font-bold">AI処理中...</p>
+      <p class="text-sm text-gray-500 mt-1">音声を分析しています。しばらくお待ちください。</p>
+      <p id="pollingStatus" class="text-xs text-gray-400 mt-2"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ── 新規プロジェクト モーダル ──────────────── -->
+<div id="newProjectModal" class="hidden modal-overlay" onclick="closeModal('newProjectModal', event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h2 class="font-bold">新規プロジェクト作成</h2>
+      <button onclick="closeModal('newProjectModal')" class="text-gray-400 hover:text-gray-600">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div>
+        <label class="text-sm font-medium text-gray-700">プロジェクト名 <span class="text-red-500">*</span></label>
+        <input id="newProjectName" type="text" placeholder="例: 2024年Q1戦略会議" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-700">説明</label>
+        <textarea id="newProjectDesc" rows="2" placeholder="プロジェクトの説明（任意）" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none resize-none focus:ring-2 focus:ring-blue-300"></textarea>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('newProjectModal')" class="px-4 py-2 text-gray-600 border rounded-lg text-sm hover:bg-gray-50">キャンセル</button>
+        <button onclick="createProject()" class="btn-accent text-white px-4 py-2 rounded-lg text-sm font-medium">作成</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 新規会議 モーダル ─────────────────────── -->
+<div id="newMeetingModal" class="hidden modal-overlay" onclick="closeModal('newMeetingModal', event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h2 class="font-bold">会議を追加・AI処理</h2>
+      <button onclick="closeModal('newMeetingModal')" class="text-gray-400 hover:text-gray-600">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div>
+        <label class="text-sm font-medium text-gray-700">会議名 <span class="text-red-500">*</span></label>
+        <input id="newMeetingName" type="text" placeholder="例: 第1回定例会議" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-700">日付</label>
+        <input id="newMeetingDate" type="date" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-700">Google Drive ファイルID <span class="text-red-500">*</span></label>
+        <input id="newMeetingDriveId" type="text" placeholder="音声ファイルのDrive IDを入力" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+        <p class="text-xs text-gray-400 mt-1">Drive URLの /d/ 以降の英数字文字列です</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-700">前回会議ID（未完了タスク引き継ぎ用・任意）</label>
+        <input id="newMeetingPrevId" type="text" placeholder="例: abc12345" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('newMeetingModal')" class="px-4 py-2 text-gray-600 border rounded-lg text-sm hover:bg-gray-50">キャンセル</button>
+        <button onclick="createMeetingAndProcess()" class="btn-accent text-white px-4 py-2 rounded-lg text-sm font-medium">作成してAI処理開始</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── セットアップ モーダル ─────────────────── -->
+<div id="setupModal" class="hidden modal-overlay" onclick="closeModal('setupModal', event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h2 class="font-bold">初期セットアップ</h2>
+      <button onclick="closeModal('setupModal')" class="text-gray-400 hover:text-gray-600">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="p-4">
+      <p class="text-sm text-gray-600 mb-4">スプレッドシートに必要なシートとヘッダーを自動作成します。</p>
+      <button onclick="runSetup()" class="btn-accent text-white px-4 py-2 rounded-lg text-sm font-medium">セットアップ実行</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 状態管理 ────────────────────────────────────────
+const state = {
+  token: localStorage.getItem('api_token') || '',
+  currentProjectId: null,
+  meetings: [],
+  pollingTimer: null,
+  pollingMeetingId: null,
+};
+
+// ── API クライアント ────────────────────────────────
+async function api(path, opts = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Api-Token': state.token,
+    ...(opts.headers || {}),
+  };
+  const res = await fetch(path, { ...opts, headers });
+  if (res.status === 401) {
+    const t = prompt('APIトークンを入力してください:');
+    if (t) {
+      state.token = t;
+      localStorage.setItem('api_token', t);
+      return api(path, opts);
+    }
+    throw new Error('認証が必要です');
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json();
+}
+
+// ── 初期化 ──────────────────────────────────────────
+async function init() {
+  try {
+    const cfg = await api('/api/config');
+    document.getElementById('appName').textContent = cfg.app_name;
+    document.getElementById('appIcon').textContent = cfg.icon || '🎙️';
+    document.documentElement.setAttribute('data-theme', cfg.theme || 'blue');
+    document.title = cfg.app_name;
+
+    mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+    await loadProjects();
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+  }
+}
+
+// ── プロジェクト一覧 ────────────────────────────────
+async function loadProjects() {
+  try {
+    const res = await api('/api/projects');
+    const projects = res.data || [];
+    const el = document.getElementById('projectList');
+    el.innerHTML = '';
+    if (projects.length === 0) {
+      el.innerHTML = '<p class="text-xs text-gray-400 px-2 py-4 text-center">プロジェクトがありません</p>';
+      return;
+    }
+    projects.forEach(p => {
+      const div = document.createElement('div');
+      div.className = `sidebar-item text-sm ${p.ID === state.currentProjectId ? 'active' : ''}`;
+      div.innerHTML = `
+        <div class="flex items-center justify-between group">
+          <span class="truncate" onclick="selectProject('${p.ID}', '${escHtml(p.プロジェクト名)}', '${escHtml(p.説明 || '')}')">
+            📁 ${escHtml(p.プロジェクト名)}
+          </span>
+          <button onclick="deleteProject('${p.ID}', event)" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 ml-1">
+            <span class="material-icons text-sm">delete</span>
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-0.5 truncate">${escHtml(p.作成日 || '')}</p>
+      `;
+      el.appendChild(div);
+    });
+  } catch (e) {
+    showToast('プロジェクト取得エラー: ' + e.message, 'error');
+  }
+}
+
+async function selectProject(id, name, desc) {
+  state.currentProjectId = id;
+  document.getElementById('projectTitle').textContent = name;
+  document.getElementById('projectDesc').textContent = desc;
+  document.getElementById('addMeetingBtn').disabled = false;
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('meetingSection').classList.remove('hidden');
+  await loadMeetings();
+  loadProjects(); // サイドバーのactive更新
+}
+
+// ── 会議一覧 ────────────────────────────────────────
+async function loadMeetings() {
+  if (!state.currentProjectId) return;
+  try {
+    const res = await api(`/api/meetings?project_id=${state.currentProjectId}`);
+    state.meetings = res.data || [];
+    renderMeetingTable();
+  } catch (e) {
+    showToast('会議取得エラー: ' + e.message, 'error');
+  }
+}
+
+function renderMeetingTable() {
+  const tbody = document.getElementById('meetingTable');
+  const empty = document.getElementById('meetingEmpty');
+
+  if (state.meetings.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = state.meetings.map(m => {
+    const statusClass = {
+      '待機中': 'status-waiting',
+      '処理中': 'status-processing',
+      '完了': 'status-done',
+      'エラー': 'status-error',
+    }[m.ステータス] || 'status-waiting';
+
+    const isDone = m.ステータス === '完了';
+    const isProcessing = m.ステータス === '処理中';
+
+    return `
+      <tr class="border-b hover:bg-gray-50 transition-colors">
+        <td class="px-4 py-3 font-medium">${escHtml(m.会議名 || '')}</td>
+        <td class="px-4 py-3 text-gray-500">${escHtml(m.日付 || '')}</td>
+        <td class="px-4 py-3">
+          <span class="status-badge ${statusClass}">
+            ${isProcessing ? '<span class="material-icons text-xs animate-spin">refresh</span>' : ''}
+            ${escHtml(m.ステータス || '待機中')}
+          </span>
+        </td>
+        <td class="px-4 py-3 text-right">
+          ${isDone
+            ? `<button onclick="openResult('${m.ID}')" class="text-sm accent-text hover:underline font-medium">結果を見る</button>`
+            : isProcessing
+            ? `<button onclick="startPolling('${m.ID}')" class="text-xs text-gray-400">確認中...</button>`
+            : `<span class="text-xs text-gray-400">${escHtml(m.ID || '')}</span>`
+          }
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ── プロジェクト作成 ────────────────────────────────
+async function createProject() {
+  const name = document.getElementById('newProjectName').value.trim();
+  const desc = document.getElementById('newProjectDesc').value.trim();
+  if (!name) { showToast('プロジェクト名を入力してください', 'error'); return; }
+  try {
+    await api('/api/projects', {
+      method: 'POST',
+      body: JSON.stringify({ name, description: desc }),
+    });
+    closeModal('newProjectModal');
+    showToast('プロジェクトを作成しました', 'success');
+    document.getElementById('newProjectName').value = '';
+    document.getElementById('newProjectDesc').value = '';
+    await loadProjects();
+  } catch (e) {
+    showToast('作成エラー: ' + e.message, 'error');
+  }
+}
+
+async function deleteProject(id, e) {
+  e.stopPropagation();
+  if (!confirm('このプロジェクトを削除しますか？')) return;
+  try {
+    await api(`/api/projects/${id}`, { method: 'DELETE' });
+    if (state.currentProjectId === id) {
+      state.currentProjectId = null;
+      document.getElementById('projectTitle').textContent = 'プロジェクトを選択';
+      document.getElementById('projectDesc').textContent = '';
+      document.getElementById('addMeetingBtn').disabled = true;
+      document.getElementById('emptyState').classList.remove('hidden');
+      document.getElementById('meetingSection').classList.add('hidden');
+    }
+    showToast('削除しました', 'success');
+    await loadProjects();
+  } catch (e) {
+    showToast('削除エラー: ' + e.message, 'error');
+  }
+}
+
+// ── 会議作成 + AI処理 ───────────────────────────────
+async function createMeetingAndProcess() {
+  const name    = document.getElementById('newMeetingName').value.trim();
+  const date    = document.getElementById('newMeetingDate').value;
+  const driveId = document.getElementById('newMeetingDriveId').value.trim();
+  const prevId  = document.getElementById('newMeetingPrevId').value.trim();
+
+  if (!name || !driveId) {
+    showToast('会議名とDriveファイルIDは必須です', 'error');
+    return;
+  }
+
+  try {
+    // 1. 会議レコード作成
+    const res = await api('/api/meetings', {
+      method: 'POST',
+      body: JSON.stringify({
+        project_id: state.currentProjectId,
+        name, date, drive_file_id: driveId,
+      }),
+    });
+
+    closeModal('newMeetingModal');
+    document.getElementById('newMeetingName').value = '';
+    document.getElementById('newMeetingDate').value = '';
+    document.getElementById('newMeetingDriveId').value = '';
+    document.getElementById('newMeetingPrevId').value = '';
+
+    // 2. AI処理開始
+    showToast('AI処理を開始しました', 'info');
+    await api(`/api/meetings/${res.id}/process`, {
+      method: 'POST',
+      body: JSON.stringify({ drive_file_id: driveId, prev_meeting_id: prevId }),
+    });
+
+    await loadMeetings();
+    startPolling(res.id);
+
+  } catch (e) {
+    showToast('エラー: ' + e.message, 'error');
+  }
+}
+
+// ── ポーリング ──────────────────────────────────────
+function startPolling(meetingId) {
+  if (state.pollingTimer) clearInterval(state.pollingTimer);
+  state.pollingMeetingId = meetingId;
+  document.getElementById('processingOverlay').classList.remove('hidden');
+
+  let count = 0;
+  state.pollingTimer = setInterval(async () => {
+    count++;
+    document.getElementById('pollingStatus').textContent = `確認中... (${count * 3}秒経過)`;
+    try {
+      const res = await api(`/api/meetings/${meetingId}/status`);
+      const data = res.data;
+      const status = data?.ステータス;
+
+      if (status === '完了' || status === 'エラー') {
+        clearInterval(state.pollingTimer);
+        state.pollingTimer = null;
+        document.getElementById('processingOverlay').classList.add('hidden');
+
+        if (status === '完了') {
+          showToast('議事録の生成が完了しました！', 'success');
+          await loadMeetings();
+          openResult(meetingId);
+        } else {
+          showToast('AI処理中にエラーが発生しました', 'error');
+          await loadMeetings();
+        }
+      }
+    } catch (e) {
+      // ポーリングエラーは無視して継続
+    }
+
+    if (count > 120) { // 6分でタイムアウト
+      clearInterval(state.pollingTimer);
+      document.getElementById('processingOverlay').classList.add('hidden');
+      showToast('タイムアウト：処理に時間がかかっています。後ほど確認してください。', 'error');
+      await loadMeetings();
+    }
+  }, 3000);
+}
+
+// ── 結果表示 ────────────────────────────────────────
+async function openResult(meetingId) {
+  try {
+    const res = await api(`/api/meetings/${meetingId}/status`);
+    const data = res.data;
+    if (!data) throw new Error('データが見つかりません');
+
+    document.getElementById('resultTitle').textContent = data.会議名 || '会議結果';
+
+    // 文字起こし
+    document.getElementById('transcriptContent').textContent = data.文字起こし || '（なし）';
+
+    // 議事録JSON
+    let minutes = {};
+    try { minutes = JSON.parse(data.議事録JSON || '{}'); } catch(e) {}
+    renderMinutes(minutes, data);
+
+    // タスク
+    renderTasks(minutes);
+
+    // フローチャート
+    const mermaid_code = data.MermaidCode || '';
+    document.getElementById('mermaidCode').textContent = mermaid_code;
+    await renderMermaid(mermaid_code);
+
+    // ガントチャート
+    let gantt = [];
+    try { gantt = JSON.parse(data.ガントJSON || '[]'); } catch(e) {}
+    renderGantt(gantt);
+
+    // タブリセット
+    switchTab('minutes', document.querySelector('.tab-btn'));
+    document.getElementById('resultOverlay').classList.remove('hidden');
+
+  } catch (e) {
+    showToast('結果取得エラー: ' + e.message, 'error');
+  }
+}
+
+function renderMinutes(minutes, raw) {
+  const el = document.getElementById('minutesContent');
+  el.innerHTML = `
+    <div class="bg-blue-50 rounded-lg p-3">
+      <h3 class="font-bold text-blue-800 mb-2">📋 議題</h3>
+      <ul class="list-disc list-inside space-y-1 text-gray-700">
+        ${(minutes.agenda || []).map(a => `<li>${escHtml(a)}</li>`).join('') || '<li class="text-gray-400">なし</li>'}
+      </ul>
+    </div>
+    <div class="bg-green-50 rounded-lg p-3">
+      <h3 class="font-bold text-green-800 mb-2">✅ 決定事項</h3>
+      <ul class="list-disc list-inside space-y-1 text-gray-700">
+        ${(minutes.decisions || []).map(d => `<li>${escHtml(d)}</li>`).join('') || '<li class="text-gray-400">なし</li>'}
+      </ul>
+    </div>
+    ${(minutes.carryover_tasks || []).length > 0 ? `
+    <div class="bg-yellow-50 rounded-lg p-3">
+      <h3 class="font-bold text-yellow-800 mb-2">🔄 前回からの引き継ぎ</h3>
+      <ul class="list-disc list-inside space-y-1 text-gray-700">
+        ${minutes.carryover_tasks.map(t => `<li>${escHtml(t)}</li>`).join('')}
+      </ul>
+    </div>` : ''}
+  `;
+}
+
+function renderTasks(minutes) {
+  const el = document.getElementById('tasksContent');
+  const priority = minutes.priority_tasks || [];
+  const delegate = minutes.delegate_tasks || [];
+  const risks     = minutes.risks || [];
+
+  el.innerHTML = `
+    <div class="rounded-lg border p-3">
+      <h3 class="font-bold mb-2">🔴 優先タスク</h3>
+      ${priority.length === 0 ? '<p class="text-gray-400 text-sm">なし</p>' : priority.map(t => `
+        <div class="flex items-start gap-2 py-1.5 border-b last:border-0">
+          <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold shrink-0">${escHtml(t.label)}</span>
+          <div>
+            <p class="font-medium">${escHtml(t.task)}</p>
+            <p class="text-xs text-gray-500">期限: ${escHtml(t.deadline || '未設定')} — ${escHtml(t.reason || '')}</p>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="rounded-lg border p-3">
+      <h3 class="font-bold mb-2">📤 委任可能タスク</h3>
+      ${delegate.length === 0 ? '<p class="text-gray-400 text-sm">なし</p>' : delegate.map(t => `
+        <div class="py-1.5 border-b last:border-0">
+          <p class="font-medium">${escHtml(t.task)}</p>
+          <p class="text-xs text-gray-500">${escHtml(t.detail || '')} (${escHtml(t.estimated_time || '')})</p>
+        </div>
+      `).join('')}
+    </div>
+    <div class="rounded-lg border border-red-200 bg-red-50 p-3">
+      <h3 class="font-bold text-red-800 mb-2">⚠️ 放置リスク</h3>
+      ${risks.length === 0 ? '<p class="text-gray-400 text-sm">リスクなし</p>' : risks.map(r => `
+        <div class="py-1.5 border-b border-red-100 last:border-0">
+          <p class="text-red-700">${escHtml(r.description || '')}</p>
+          <p class="text-xs text-red-500">→ ${escHtml(r.consequence || '')}</p>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+async function renderMermaid(code) {
+  const el = document.getElementById('flowchartContent');
+  if (!code) {
+    el.innerHTML = '<p class="text-gray-400 text-sm">フローチャートがありません</p>';
+    return;
+  }
+  try {
+    const { svg } = await mermaid.render('mermaid-svg-' + Date.now(), code);
+    el.innerHTML = svg;
+  } catch (e) {
+    el.innerHTML = `<p class="text-red-500 text-sm">Mermaid描画エラー: ${e.message}</p>`;
+  }
+}
+
+function renderGantt(tasks) {
+  const el = document.getElementById('ganttContent');
+  if (!tasks || tasks.length === 0) {
+    el.innerHTML = '<p class="text-gray-400 text-sm">ガントチャートデータがありません</p>';
+    return;
+  }
+
+  // 日付範囲を計算
+  const dates = tasks.flatMap(t => [t.start, t.end]).filter(Boolean).sort();
+  const minDate = new Date(dates[0] || Date.now());
+  const maxDate = new Date(dates[dates.length - 1] || Date.now());
+  const totalDays = Math.max(1, (maxDate - minDate) / 86400000);
+
+  const statusColor = {
+    '完了': '#16a34a', '進行中': '#3b82f6', '未着手': '#6b7280',
+  };
+
+  el.innerHTML = `
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs border-collapse" style="min-width:600px">
+        <thead>
+          <tr class="border-b">
+            <th class="text-left p-2 w-40">タスク</th>
+            <th class="text-left p-2 w-20">担当</th>
+            <th class="text-left p-2 w-20">期間</th>
+            <th class="p-2 text-left">バー</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tasks.map(t => {
+            const start = new Date(t.start || dates[0]);
+            const end   = new Date(t.end   || dates[dates.length - 1]);
+            const offset = Math.max(0, (start - minDate) / 86400000);
+            const width  = Math.max(1, (end - start) / 86400000);
+            const color = statusColor[t.status] || '#6b7280';
+            const pct = (offset / totalDays * 100).toFixed(1);
+            const wPct = (width / totalDays * 100).toFixed(1);
+            return `
+              <tr class="border-b">
+                <td class="p-2 font-medium truncate max-w-xs">${escHtml(t.task || '')}</td>
+                <td class="p-2 text-gray-500">${escHtml(t.assignee || '')}</td>
+                <td class="p-2 text-gray-500 whitespace-nowrap">${escHtml(t.start || '')}〜${escHtml(t.end || '')}</td>
+                <td class="p-2" style="min-width:200px">
+                  <div class="relative bg-gray-100 rounded h-6">
+                    <div class="absolute top-0 bottom-0 rounded"
+                      style="left:${pct}%;width:${wPct}%;background:${color};opacity:.8;min-width:4px;">
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── タブ切り替え ────────────────────────────────────
+function switchTab(name, btn) {
+  ['minutes', 'tasks', 'flowchart', 'gantt', 'transcript'].forEach(t => {
+    document.getElementById('tab-' + t).classList.add('hidden');
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  if (btn) btn.classList.add('active');
+}
+
+// ── セットアップ ────────────────────────────────────
+async function runSetup() {
+  try {
+    const res = await api('/api/setup', { method: 'POST' });
+    showToast(res.message || 'セットアップ完了', 'success');
+    closeModal('setupModal');
+  } catch (e) {
+    showToast('セットアップエラー: ' + e.message, 'error');
+  }
+}
+
+// ── ユーティリティ ──────────────────────────────────
+function openNewProjectModal() {
+  document.getElementById('newProjectModal').classList.remove('hidden');
+}
+function openNewMeetingModal() {
+  if (!state.currentProjectId) return;
+  document.getElementById('newMeetingDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('newMeetingModal').classList.remove('hidden');
+}
+function openSetupModal() {
+  document.getElementById('setupModal').classList.remove('hidden');
+}
+function closeModal(id, e) {
+  if (e && e.target !== document.getElementById(id)) return;
+  document.getElementById(id).classList.add('hidden');
+}
+function closeResult(e) {
+  if (e && e.target !== document.getElementById('resultOverlay')) return;
+  document.getElementById('resultOverlay').classList.add('hidden');
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function showToast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  const icons = { success: 'check_circle', error: 'error', info: 'info' };
+  el.innerHTML = `<span class="material-icons text-lg">${icons[type] || 'info'}</span><span>${escHtml(msg)}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── 起動 ────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

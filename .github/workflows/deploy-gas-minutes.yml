@@ -1,0 +1,28 @@
+name: Deploy GAS (議事録ツール)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '議事録からタスク管理/gas/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Set up clasp credentials
+        run: echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+
+      - name: Push to GAS
+        working-directory: 議事録からタスク管理/gas
+        run: clasp push --force
+
+      # GASプロジェクト作成後に deploymentId を更新すること
+      # - name: Deploy new version
+      #   working-directory: 議事録からタスク管理/gas
+      #   run: clasp deploy --deploymentId <DEPLOYMENT_ID_HERE>
