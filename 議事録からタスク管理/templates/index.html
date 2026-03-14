@@ -368,8 +368,13 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
+function hideLoading() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+
 function showTokenModal() {
-  document.getElementById('tokenModal').classList.remove('hidden');
+  document.getElementById('tokenModal').style.display = 'flex';
 }
 
 function saveToken() {
@@ -377,17 +382,13 @@ function saveToken() {
   if (!t) return;
   state.token = t;
   localStorage.setItem('api_token', t);
-  document.getElementById('tokenModal').classList.add('hidden');
+  document.getElementById('tokenModal').style.display = 'none';
   loadProjects();
 }
 
 // ── 初期化 ──────────────────────────────────────────
 async function init() {
-  // 最大15秒でローディングを強制終了
-  const forceHide = setTimeout(() => {
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-  }, 15000);
+  const forceHide = setTimeout(hideLoading, 15000);
 
   try {
     const cfg = await api('/api/config');
@@ -400,8 +401,7 @@ async function init() {
     showToast('設定取得エラー: ' + e.message, 'error');
   } finally {
     clearTimeout(forceHide);
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
+    hideLoading();
   }
 
   // ローディング終了後にプロジェクト読み込み（トークン未設定ならモーダル表示）
