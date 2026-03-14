@@ -331,7 +331,16 @@ async function api(path, opts = {}) {
     'X-Api-Token': state.token,
     ...(opts.headers || {}),
   };
-  const res = await fetch(path, { ...opts, headers });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  let res;
+  try {
+    res = await fetch(path, { ...opts, headers, signal: controller.signal });
+  } catch (e) {
+    clearTimeout(timer);
+    throw new Error(e.name === 'AbortError' ? 'タイムアウト：サーバーが応答しません' : e.message);
+  }
+  clearTimeout(timer);
   if (res.status === 401) {
     const t = prompt('APIトークンを入力してください:');
     if (t) {
