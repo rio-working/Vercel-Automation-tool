@@ -22,6 +22,17 @@ function processMeeting(meetingId, driveFileId, prevMeetingId) {
 
   logSheet('INFO', 'processMeeting', `処理開始: ${meetingId}`);
 
+  // 1. ファイルサイズチェック（UrlFetchApp上限50MBより余裕を持って48MB）
+  const file = DriveApp.getFileById(driveFileId);
+  const fileSize = file.getSize();
+  const MAX_BYTES = 48 * 1024 * 1024;
+  if (fileSize > MAX_BYTES) {
+    const msg = `ファイルサイズ超過: ${Math.round(fileSize / 1024 / 1024)}MB（上限48MB）。音声を圧縮・分割してください。`;
+    logSheet('ERROR', 'processMeeting', msg);
+    updateMeetingStatus(meetingId, 'エラー', '', '{}', msg, '[]');
+    return { meeting_id: meetingId, status: 'エラー' };
+  }
+
   // 前回会議の未完了タスクを取得
   const prevContext = prevMeetingId ? getPrevMeetingContext(prevMeetingId) : '';
 
@@ -31,14 +42,20 @@ function processMeeting(meetingId, driveFileId, prevMeetingId) {
   let ganttJson = '[]';
 
   try {
-    // 1. Drive からファイル取得
-    const file = DriveApp.getFileById(driveFileId);
-    const blob = file.getBlob();
-    const mimeType = blob.getContentType();
-    const fileBytes = blob.getBytes();
+    // 2. Drive API 経由で直接ダウンロード（blob.getBytes()を使わない）
+    const token = ScriptApp.getOAuthToken();
+    const dlRes = UrlFetchApp.fetch(
+      `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true }
+    );
+    if (dlRes.getResponseCode() !== 200) {
+      throw new Error('Driveダウンロード失敗: ' + dlRes.getContentText().substring(0, 200));
+    }
+    const mimeType = file.getMimeType() || 'audio/mp4';
+    const fileBlob = dlRes.getBlob().setContentType(mimeType).setName(file.getName());
 
-    // 2. Gemini Files API にアップロード
-    const fileUri = uploadToGeminiFiles(apiKey, fileBytes, mimeType, file.getName());
+    // 3. Gemini Files API にアップロード（blobを直接渡す）
+    const fileUri = uploadToGeminiFiles(apiKey, fileBlob, fileSize, mimeType, file.getName());
     logSheet('INFO', 'processMeeting', `Geminiファイルアップロード完了: ${fileUri}`);
 
     // 3. Gemini で文字起こし + 議事録生成
@@ -73,25 +90,23 @@ function processMeeting(meetingId, driveFileId, prevMeetingId) {
 /**
  * Gemini Files API にファイルをアップロードして URI を返す
  */
-function uploadToGeminiFiles(apiKey, fileBytes, mimeType, displayName) {
-  // multipart/form-data でアップロード
-  const boundary = 'gemini_boundary_' + Date.now();
-
+/**
+ * Gemini Files API にファイルをアップロードして URI を返す
+ * fileBlob: UrlFetchApp.fetch().getBlob() で取得したBlob
+ * fileSize: DriveApp.getFileById().getSize() で取得したバイト数
+ */
+function uploadToGeminiFiles(apiKey, fileBlob, fileSize, mimeType, displayName) {
   const metaJson = JSON.stringify({
     file: { display_name: displayName, mime_type: mimeType }
   });
 
-  // バイト列をBase64に変換してBlobで送信
-  const base64Data = Utilities.base64Encode(fileBytes);
-  const fileBlob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, displayName);
-
-  // resumable upload を使う（大きなファイル対応）
+  // resumable upload の開始
   const initRes = UrlFetchApp.fetch(`${GEMINI_FILES_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'X-Goog-Upload-Protocol': 'resumable',
       'X-Goog-Upload-Command': 'start',
-      'X-Goog-Upload-Header-Content-Length': fileBytes.length,
+      'X-Goog-Upload-Header-Content-Length': fileSize,
       'X-Goog-Upload-Header-Content-Type': mimeType,
       'Content-Type': 'application/json',
     },
@@ -104,15 +119,15 @@ function uploadToGeminiFiles(apiKey, fileBytes, mimeType, displayName) {
     throw new Error('Gemini Files API: アップロードURL取得失敗 ' + initRes.getContentText());
   }
 
-  // データ送信
+  // データ送信（blobを直接渡してメモリ使用を最小化）
   const uploadRes = UrlFetchApp.fetch(uploadUrl, {
     method: 'POST',
     headers: {
-      'Content-Length': fileBytes.length,
+      'Content-Length': fileSize,
       'X-Goog-Upload-Offset': 0,
       'X-Goog-Upload-Command': 'upload, finalize',
     },
-    payload: fileBlob.getBytes(),
+    payload: fileBlob,
     muteHttpExceptions: true,
   });
 
