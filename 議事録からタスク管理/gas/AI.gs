@@ -123,7 +123,6 @@ function uploadToGeminiFiles(apiKey, fileBlob, fileSize, mimeType, displayName) 
   const uploadRes = UrlFetchApp.fetch(uploadUrl, {
     method: 'POST',
     headers: {
-      'Content-Length': String(fileSize),
       'X-Goog-Upload-Offset': '0',
       'X-Goog-Upload-Command': 'upload, finalize',
     },
