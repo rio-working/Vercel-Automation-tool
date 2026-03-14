@@ -11,16 +11,25 @@ from google.oauth2.service_account import Credentials
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
+# 同一Lambda実行内でクライアントを再利用してAPI呼び出し回数を削減
+_client_cache: gspread.Client | None = None
+_spreadsheet_cache: gspread.Spreadsheet | None = None
+
 
 def _get_client() -> gspread.Client:
-    service_account_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
-    creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
-    return gspread.authorize(creds)
+    global _client_cache
+    if _client_cache is None:
+        service_account_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
+        creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
+        _client_cache = gspread.authorize(creds)
+    return _client_cache
 
 
 def _get_spreadsheet() -> gspread.Spreadsheet:
-    client = _get_client()
-    return client.open_by_key(os.environ["SPREADSHEET_ID"])
+    global _spreadsheet_cache
+    if _spreadsheet_cache is None:
+        _spreadsheet_cache = _get_client().open_by_key(os.environ["SPREADSHEET_ID"])
+    return _spreadsheet_cache
 
 
 def get_worksheet(sheet_name: str) -> gspread.Worksheet:
