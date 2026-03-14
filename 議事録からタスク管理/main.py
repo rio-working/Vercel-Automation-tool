@@ -7,7 +7,6 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-from mangum import Mangum
 
 from config import APP_CONFIG
 from core.auth import verify_token
@@ -91,5 +90,3 @@ def frontend(full_path: str = ""):
     return HTMLResponse(template.read_text(encoding="utf-8"))
 
 
-# ── Vercel サーバーレス用ハンドラー ──────────────────────────
-handler = Mangum(app)
