@@ -298,6 +298,22 @@
   </div>
 </div>
 
+<!-- ── トークン入力 モーダル ─────────────────── -->
+<div id="tokenModal" class="hidden modal-overlay">
+  <div class="modal-box" style="max-width:400px;" onclick="event.stopPropagation()">
+    <div class="p-4 border-b">
+      <h2 class="font-bold">🔑 APIトークンを入力</h2>
+      <p class="text-xs text-gray-400 mt-1">Vercelの環境変数 API_SECRET_TOKEN に設定した値</p>
+    </div>
+    <div class="p-4 space-y-3">
+      <input id="tokenInput" type="password" placeholder="APIトークン"
+        class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+        onkeydown="if(event.key==='Enter') saveToken()">
+      <button onclick="saveToken()" class="w-full btn-accent text-white py-2 rounded-lg text-sm font-medium">保存して続ける</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── セットアップ モーダル ─────────────────── -->
 <div id="setupModal" class="hidden modal-overlay" onclick="closeModal('setupModal', event)">
   <div class="modal-box" onclick="event.stopPropagation()">
@@ -342,13 +358,8 @@ async function api(path, opts = {}) {
   }
   clearTimeout(timer);
   if (res.status === 401) {
-    const t = prompt('APIトークンを入力してください:');
-    if (t) {
-      state.token = t;
-      localStorage.setItem('api_token', t);
-      return api(path, opts);
-    }
-    throw new Error('認証が必要です');
+    showTokenModal();
+    throw new Error('APIトークンを入力してください');
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -357,23 +368,47 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
+function showTokenModal() {
+  document.getElementById('tokenModal').classList.remove('hidden');
+}
+
+function saveToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) return;
+  state.token = t;
+  localStorage.setItem('api_token', t);
+  document.getElementById('tokenModal').classList.add('hidden');
+  loadProjects();
+}
+
 // ── 初期化 ──────────────────────────────────────────
 async function init() {
+  // 最大15秒でローディングを強制終了
+  const forceHide = setTimeout(() => {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+  }, 15000);
+
   try {
     const cfg = await api('/api/config');
     document.getElementById('appName').textContent = cfg.app_name;
     document.getElementById('appIcon').textContent = cfg.icon || '🎙️';
     document.documentElement.setAttribute('data-theme', cfg.theme || 'blue');
     document.title = cfg.app_name;
-
     mermaid.initialize({ startOnLoad: false, theme: 'default' });
-
-    await loadProjects();
   } catch (e) {
-    showToast(e.message, 'error');
+    showToast('設定取得エラー: ' + e.message, 'error');
   } finally {
+    clearTimeout(forceHide);
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
+  }
+
+  // ローディング終了後にプロジェクト読み込み（トークン未設定ならモーダル表示）
+  if (state.token) {
+    loadProjects();
+  } else {
+    showTokenModal();
   }
 }
 
