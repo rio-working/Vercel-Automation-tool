@@ -2,14 +2,16 @@
  * AI.gs — Gemini API を使った音声処理・議事録生成
  *
  * 処理フロー:
- *   1. DriveApp で音声ファイル取得
- *   2. Gemini Files API にアップロード（Base64エンコード）
- *   3. gemini-2.0-flash-exp で一括生成
+ *   1. Drive API で音声ファイルをダウンロード
+ *   2. Base64エンコードして inline_data で Gemini に送信（Files API不使用）
+ *   3. gemini-2.0-flash で一括生成
  *   4. 結果をシートに保存 → 通知
+ *
+ * ※ GAS は Content-Length を含むヘッダー名を全てブロックするため
+ *    Files API の resumable upload は使用不可。inline_data で回避。
  */
 
 const GEMINI_MODEL = 'gemini-2.0-flash';
-const GEMINI_FILES_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
 const GEMINI_GENERATE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
 
 /**
@@ -42,7 +44,7 @@ function processMeeting(meetingId, driveFileId, prevMeetingId) {
   let ganttJson = '[]';
 
   try {
-    // 2. Drive API 経由で直接ダウンロード（blob.getBytes()を使わない）
+    // 2. Drive API 経由でダウンロード → Base64エンコード
     const token = ScriptApp.getOAuthToken();
     const dlRes = UrlFetchApp.fetch(
       `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
@@ -52,15 +54,11 @@ function processMeeting(meetingId, driveFileId, prevMeetingId) {
       throw new Error('Driveダウンロード失敗: ' + dlRes.getContentText().substring(0, 200));
     }
     const mimeType = file.getMimeType() || 'audio/mp4';
-    // getContent()でバイト配列取得→Utilities.newBlob()でサイズ確定（Content-Length問題回避）
-    const fileBlob = Utilities.newBlob(dlRes.getContent(), mimeType, file.getName());
+    const base64Audio = Utilities.base64Encode(dlRes.getContent());
+    logSheet('INFO', 'processMeeting', 'Base64エンコード完了。Gemini処理開始...');
 
-    // 3. Gemini Files API にアップロード（blobを直接渡す）
-    const fileUri = uploadToGeminiFiles(apiKey, fileBlob, fileSize, mimeType, file.getName());
-    logSheet('INFO', 'processMeeting', `Geminiファイルアップロード完了: ${fileUri}`);
-
-    // 3. Gemini で文字起こし + 議事録生成
-    const result = generateMinutes(apiKey, fileUri, mimeType, prevContext);
+    // 3. inline_data で Gemini に直接送信（Files API不使用でContent-Length問題を回避）
+    const result = generateMinutes(apiKey, base64Audio, mimeType, prevContext);
     transcript   = result.transcript   || '';
     minutesJson  = result.minutes_json || '{}';
     mermaidCode  = result.mermaid_code || '';
@@ -89,60 +87,9 @@ function processMeeting(meetingId, driveFileId, prevMeetingId) {
 }
 
 /**
- * Gemini Files API にファイルをアップロードして URI を返す
+ * Gemini で議事録を一括生成する（inline_data 方式）
  */
-/**
- * Gemini Files API にファイルをアップロードして URI を返す
- * fileBlob: UrlFetchApp.fetch().getBlob() で取得したBlob
- * fileSize: DriveApp.getFileById().getSize() で取得したバイト数
- */
-function uploadToGeminiFiles(apiKey, fileBlob, fileSize, mimeType, displayName) {
-  const metaJson = JSON.stringify({
-    file: { display_name: displayName, mime_type: mimeType }
-  });
-
-  // resumable upload の開始
-  // ※ "content-length" を含むヘッダー名はGASが全てブロックするため除外
-  const initRes = UrlFetchApp.fetch(`${GEMINI_FILES_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: {
-      'X-Goog-Upload-Protocol': 'resumable',
-      'X-Goog-Upload-Command': 'start',
-      'X-Goog-Upload-Header-Content-Type': mimeType,
-      'Content-Type': 'application/json',
-    },
-    payload: metaJson,
-    muteHttpExceptions: true,
-  });
-
-  const uploadUrl = initRes.getHeaders()['x-goog-upload-url'];
-  if (!uploadUrl) {
-    throw new Error('Gemini Files API: アップロードURL取得失敗 ' + initRes.getContentText());
-  }
-
-  // データ送信（blobを直接渡してメモリ使用を最小化）
-  const uploadRes = UrlFetchApp.fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'X-Goog-Upload-Offset': '0',
-      'X-Goog-Upload-Command': 'upload, finalize',
-    },
-    payload: fileBlob,
-    muteHttpExceptions: true,
-  });
-
-  const uploadData = JSON.parse(uploadRes.getContentText());
-  const fileUri = uploadData.file && uploadData.file.uri;
-  if (!fileUri) {
-    throw new Error('Gemini Files API: ファイルURI取得失敗 ' + uploadRes.getContentText());
-  }
-  return fileUri;
-}
-
-/**
- * Gemini で議事録を一括生成する
- */
-function generateMinutes(apiKey, fileUri, mimeType, prevContext) {
+function generateMinutes(apiKey, base64Audio, mimeType, prevContext) {
   const prevSection = prevContext
     ? `\n\n【前回会議の未完了タスク】\n${prevContext}\n上記を今回の議事録に引き継いでください。\n`
     : '';
@@ -185,7 +132,7 @@ ${prevSection}
   const requestBody = {
     contents: [{
       parts: [
-        { file_data: { mime_type: mimeType, file_uri: fileUri } },
+        { inline_data: { mime_type: mimeType, data: base64Audio } },
         { text: prompt },
       ]
     }],
