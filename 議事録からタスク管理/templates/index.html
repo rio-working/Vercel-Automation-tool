@@ -77,6 +77,16 @@
   .tab-btn { padding: 8px 16px; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; }
   .tab-btn.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
+  .step-btn {
+    padding: 4px 8px; border-radius: 6px; font-size: 12px; cursor: pointer;
+    border: 1px solid #e5e7eb; background: white; transition: background .15s;
+    white-space: nowrap;
+  }
+  .step-btn:hover:not(:disabled) { background: var(--accent-light); }
+  .step-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+  .step-btn.done { background: #dcfce7; border-color: #86efac; color: #166534; }
+  .step-btn.view { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+
   .mermaid-container svg { max-width: 100%; height: auto; }
 
   .gantt-bar {
@@ -225,14 +235,49 @@
   </div>
 </div>
 
-<!-- ── 処理中パネル ─────────────────────────── -->
-<div id="processingOverlay" class="hidden modal-overlay">
-  <div class="modal-box" style="max-width:400px;">
-    <div class="p-6 text-center">
-      <div class="spinner mx-auto mb-4"></div>
-      <p class="font-bold">AI処理中...</p>
-      <p class="text-sm text-gray-500 mt-1">音声を分析しています。しばらくお待ちください。</p>
-      <p id="pollingStatus" class="text-xs text-gray-400 mt-2"></p>
+<!-- ── 文字起こし モーダル ────────────────────── -->
+<div id="transcribeModal" class="hidden modal-overlay" onclick="closeModal('transcribeModal', event)">
+  <div class="modal-box" style="max-width:460px;" onclick="event.stopPropagation()">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h2 class="font-bold">🎤 文字起こし</h2>
+      <button onclick="closeModal('transcribeModal')" class="text-gray-400 hover:text-gray-600">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="p-4 space-y-3">
+      <input type="hidden" id="transcribeMeetingId">
+      <div>
+        <label class="text-sm font-medium text-gray-700">Google Drive ファイルID <span class="text-red-500">*</span></label>
+        <input id="transcribeDriveId" type="text" placeholder="例: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+        <p class="text-xs text-gray-400 mt-1">Drive URLの /d/ と /view の間の文字列</p>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('transcribeModal')" class="px-4 py-2 text-gray-600 border rounded-lg text-sm hover:bg-gray-50">キャンセル</button>
+        <button onclick="startTranscribe()" class="btn-accent text-white px-4 py-2 rounded-lg text-sm font-medium">文字起こし開始</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 議事録生成 モーダル ──────────────────── -->
+<div id="minutesModal" class="hidden modal-overlay" onclick="closeModal('minutesModal', event)">
+  <div class="modal-box" style="max-width:460px;" onclick="event.stopPropagation()">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h2 class="font-bold">📋 議事録・タスク生成</h2>
+      <button onclick="closeModal('minutesModal')" class="text-gray-400 hover:text-gray-600">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="p-4 space-y-3">
+      <input type="hidden" id="minutesMeetingId">
+      <div>
+        <label class="text-sm font-medium text-gray-700">前回会議ID <span class="text-xs text-gray-400">（任意・未完了タスク引き継ぎ用）</span></label>
+        <input id="minutesPrevId" type="text" placeholder="例: abc12345" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('minutesModal')" class="px-4 py-2 text-gray-600 border rounded-lg text-sm hover:bg-gray-50">キャンセル</button>
+        <button onclick="startMinutes()" class="btn-accent text-white px-4 py-2 rounded-lg text-sm font-medium">議事録生成開始</button>
+      </div>
     </div>
   </div>
 </div>
@@ -314,33 +359,6 @@
   </div>
 </div>
 
-<!-- ── AI処理開始 モーダル ────────────────────── -->
-<div id="processModal" class="hidden modal-overlay" onclick="closeModal('processModal', event)">
-  <div class="modal-box" style="max-width:460px;" onclick="event.stopPropagation()">
-    <div class="p-4 border-b flex items-center justify-between">
-      <h2 class="font-bold">AI処理開始</h2>
-      <button onclick="closeModal('processModal')" class="text-gray-400 hover:text-gray-600">
-        <span class="material-icons">close</span>
-      </button>
-    </div>
-    <div class="p-4 space-y-3">
-      <input type="hidden" id="processMeetingId">
-      <div>
-        <label class="text-sm font-medium text-gray-700">Google Drive ファイルID <span class="text-red-500">*</span></label>
-        <input id="processDriveId" type="text" placeholder="例: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-        <p class="text-xs text-gray-400 mt-1">Drive URLの /d/ と /view の間の文字列</p>
-      </div>
-      <div>
-        <label class="text-sm font-medium text-gray-700">前回会議ID <span class="text-xs text-gray-400">（任意）</span></label>
-        <input id="processPrevId" type="text" placeholder="例: abc12345" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-      </div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeModal('processModal')" class="px-4 py-2 text-gray-600 border rounded-lg text-sm hover:bg-gray-50">キャンセル</button>
-        <button onclick="startProcess()" class="btn-accent text-white px-4 py-2 rounded-lg text-sm font-medium">処理開始</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ── セットアップ モーダル ─────────────────── -->
 <div id="setupModal" class="hidden modal-overlay" onclick="closeModal('setupModal', event)">
@@ -364,9 +382,9 @@ const state = {
   token: localStorage.getItem('api_token') || '',
   currentProjectId: null,
   meetings: [],
-  pollingTimer: null,
-  pollingMeetingId: null,
 };
+// 行単位ポーリングタイマー { meetingId: intervalId }
+const _rowPollingTimers = {};
 
 // ── API クライアント ────────────────────────────────
 async function api(path, opts = {}) {
@@ -495,6 +513,60 @@ async function loadMeetings() {
   }
 }
 
+function isProcessingStatus(status) {
+  return status && status.endsWith('中');
+}
+
+function renderActionButtons(m) {
+  const status = m.ステータス || '待機中';
+  const id = m.ID;
+  const hasTranscript = !!(m.文字起こし || '').trim();
+  const hasMinutes    = !!(m.議事録JSON || '').replace(/^\{\s*\}$/, '').trim();
+  const hasFlowchart  = !!(m.MermaidCode || '').trim();
+  const hasGantt      = !!(m.ガントJSON || '').replace(/^\[\s*\]$/, '').trim();
+
+  const isProcessing   = isProcessingStatus(status);
+  const isTranscribing = status === '文字起こし中';
+  const isMinutes      = status === '議事録生成中';
+  const isFlowchart    = status === 'フロー生成中';
+  const isGantt        = status === 'ガント生成中';
+  const spin = `<span class="material-icons text-xs animate-spin" style="font-size:12px">refresh</span>`;
+
+  // 文字起こし前かつ処理中でない → 文字起こしボタンのみ
+  if (!hasTranscript && !isProcessing) {
+    return `<button onclick="openTranscribeModal('${id}')" class="text-sm text-blue-500 hover:underline">🎤 文字起こし</button>`;
+  }
+
+  // 文字起こし中
+  if (isTranscribing) {
+    return `<span class="text-xs text-amber-600 flex items-center gap-1 justify-end">${spin}文字起こし中...</span>`;
+  }
+
+  // 文字起こし済み（またはlegacy完了）→ 4ステップボタン
+  if (hasTranscript) {
+    const lock = isProcessing;
+    const tBtn = isTranscribing
+      ? `<button disabled class="step-btn">${spin}🎤</button>`
+      : `<button onclick="openTranscribeModal('${id}')" class="step-btn ${hasTranscript ? 'done' : ''}" ${lock ? 'disabled' : ''} title="文字起こし（再実行）">🎤${hasTranscript ? '✓' : ''}</button>`;
+    const mBtn = isMinutes
+      ? `<button disabled class="step-btn">${spin}📋</button>`
+      : `<button onclick="openMinutesModal('${id}')" class="step-btn ${hasMinutes ? 'done' : ''}" ${lock ? 'disabled' : ''} title="議事録・タスク生成">📋${hasMinutes ? '✓' : ''}</button>`;
+    const fBtn = isFlowchart
+      ? `<button disabled class="step-btn">${spin}📊</button>`
+      : `<button onclick="triggerFlowchart('${id}')" class="step-btn ${hasFlowchart ? 'done' : ''}" ${lock ? 'disabled' : ''} title="フローチャート生成">📊${hasFlowchart ? '✓' : ''}</button>`;
+    const gBtn = isGantt
+      ? `<button disabled class="step-btn">${spin}📅</button>`
+      : `<button onclick="triggerGantt('${id}')" class="step-btn ${hasGantt ? 'done' : ''}" ${lock ? 'disabled' : ''} title="ガントチャート生成">📅${hasGantt ? '✓' : ''}</button>`;
+    const vBtn = (hasTranscript || hasMinutes || hasFlowchart || hasGantt)
+      ? `<button onclick="openResult('${id}')" class="step-btn view" title="結果を見る">👁️</button>`
+      : '';
+    return `<div class="flex gap-1 justify-end flex-wrap">${tBtn}${mBtn}${fBtn}${gBtn}${vBtn}</div>`;
+  }
+
+  // その他の処理中ステータス（議事録生成中/フロー生成中/ガント生成中）で文字起こし未取得
+  return `<span class="text-xs text-amber-600 flex items-center gap-1 justify-end">${spin}処理中...</span>`;
+}
+
 function renderMeetingTable() {
   const tbody = document.getElementById('meetingTable');
   const empty = document.getElementById('meetingEmpty');
@@ -507,15 +579,18 @@ function renderMeetingTable() {
   empty.classList.add('hidden');
 
   tbody.innerHTML = state.meetings.map(m => {
+    const status = m.ステータス || '待機中';
     const statusClass = {
       '待機中': 'status-waiting',
       '処理中': 'status-processing',
+      '文字起こし中':  'status-processing',
+      '文字起こし完了': 'status-done',
+      '議事録生成中':  'status-processing',
+      'フロー生成中':  'status-processing',
+      'ガント生成中':  'status-processing',
       '完了': 'status-done',
       'エラー': 'status-error',
-    }[m.ステータス] || 'status-waiting';
-
-    const isDone = m.ステータス === '完了';
-    const isProcessing = m.ステータス === '処理中';
+    }[status] || 'status-waiting';
 
     return `
       <tr class="border-b hover:bg-gray-50 transition-colors">
@@ -523,21 +598,21 @@ function renderMeetingTable() {
         <td class="px-4 py-3 text-gray-500">${escHtml(m.日付 || '')}</td>
         <td class="px-4 py-3">
           <span class="status-badge ${statusClass}">
-            ${isProcessing ? '<span class="material-icons text-xs animate-spin">refresh</span>' : ''}
-            ${escHtml(m.ステータス || '待機中')}
+            ${isProcessingStatus(status) ? '<span class="material-icons text-xs animate-spin" style="font-size:12px">refresh</span>' : ''}
+            ${escHtml(status)}
           </span>
         </td>
         <td class="px-4 py-3 text-right">
-          ${isDone
-            ? `<button onclick="openResult('${m.ID}')" class="text-sm accent-text hover:underline font-medium">結果を見る</button>`
-            : isProcessing
-            ? `<button onclick="startPolling('${m.ID}')" class="text-xs text-gray-400">確認中...</button>`
-            : `<button onclick="openProcessModal('${m.ID}')" class="text-sm text-blue-500 hover:underline">AI処理開始</button>`
-          }
+          ${renderActionButtons(m)}
         </td>
       </tr>
     `;
   }).join('');
+
+  // 処理中の行はポーリングを自動開始
+  state.meetings.forEach(m => {
+    if (isProcessingStatus(m.ステータス)) startRowPolling(m.ID);
+  });
 }
 
 // ── プロジェクト作成 ────────────────────────────────
@@ -611,67 +686,55 @@ async function createMeetingAndProcess() {
     document.getElementById('newMeetingPrevId').value = '';
 
     await loadMeetings();
-
-    // ファイルIDがある場合のみAI処理開始
-    if (!driveId) {
-      showToast('会議を作成しました。DriveファイルIDを設定後「AI処理開始」を押してください。', 'info');
-      return;
-    }
-
-    showToast('AI処理を開始しました', 'info');
-    await api(`/api/meetings/${res.id}/process`, {
-      method: 'POST',
-      body: JSON.stringify({ drive_file_id: driveId, prev_meeting_id: prevId }),
-    });
-
-    await loadMeetings();
-    startPolling(res.id);
+    showToast('会議を作成しました。🎤ボタンから文字起こしを開始してください。', 'success');
 
   } catch (e) {
     showToast('エラー: ' + e.message, 'error');
   }
 }
 
-// ── ポーリング ──────────────────────────────────────
-function startPolling(meetingId) {
-  if (state.pollingTimer) clearInterval(state.pollingTimer);
-  state.pollingMeetingId = meetingId;
-  document.getElementById('processingOverlay').classList.remove('hidden');
-
+// ── 行単位ポーリング ────────────────────────────────
+function startRowPolling(meetingId) {
+  if (_rowPollingTimers[meetingId]) return; // 既にポーリング中
   let count = 0;
-  state.pollingTimer = setInterval(async () => {
+  _rowPollingTimers[meetingId] = setInterval(async () => {
     count++;
-    document.getElementById('pollingStatus').textContent = `確認中... (${count * 3}秒経過)`;
     try {
       const res = await api(`/api/meetings/${meetingId}/status`);
       const data = res.data;
-      const status = data?.ステータス;
-
-      if (status === '完了' || status === 'エラー') {
-        clearInterval(state.pollingTimer);
-        state.pollingTimer = null;
-        document.getElementById('processingOverlay').classList.add('hidden');
-
-        if (status === '完了') {
-          showToast('議事録の生成が完了しました！', 'success');
-          await loadMeetings();
-          openResult(meetingId);
-        } else {
-          showToast('AI処理中にエラーが発生しました', 'error');
-          await loadMeetings();
+      const status = data?.ステータス || '';
+      if (!isProcessingStatus(status)) {
+        stopRowPolling(meetingId);
+        // 該当行のデータを更新して再描画
+        const idx = state.meetings.findIndex(m => m.ID === meetingId);
+        if (idx >= 0) {
+          state.meetings[idx] = data;
+          renderMeetingTable();
+        }
+        if (status === 'エラー') {
+          showToast('処理中にエラーが発生しました。ログシートを確認してください。', 'error');
         }
       }
     } catch (e) {
       // ポーリングエラーは無視して継続
     }
-
     if (count > 120) { // 6分でタイムアウト
-      clearInterval(state.pollingTimer);
-      document.getElementById('processingOverlay').classList.add('hidden');
-      showToast('タイムアウト：処理に時間がかかっています。後ほど確認してください。', 'error');
-      await loadMeetings();
+      stopRowPolling(meetingId);
+      showToast('タイムアウト：後ほどページを更新して確認してください。', 'error');
     }
   }, 3000);
+}
+
+function stopRowPolling(meetingId) {
+  if (_rowPollingTimers[meetingId]) {
+    clearInterval(_rowPollingTimers[meetingId]);
+    delete _rowPollingTimers[meetingId];
+  }
+}
+
+// 後方互換のため残す（旧フローから呼ばれた場合）
+function startPolling(meetingId) {
+  startRowPolling(meetingId);
 }
 
 // ── 結果表示 ────────────────────────────────────────
@@ -886,28 +949,71 @@ function openNewMeetingModal() {
 function openSetupModal() {
   document.getElementById('setupModal').classList.remove('hidden');
 }
-function openProcessModal(meetingId) {
-  document.getElementById('processMeetingId').value = meetingId;
-  document.getElementById('processDriveId').value = '';
-  document.getElementById('processPrevId').value = '';
-  document.getElementById('processModal').classList.remove('hidden');
+// ── 4ステップボタン処理 ─────────────────────────────
+function openTranscribeModal(meetingId) {
+  document.getElementById('transcribeMeetingId').value = meetingId;
+  document.getElementById('transcribeDriveId').value = '';
+  document.getElementById('transcribeModal').classList.remove('hidden');
 }
-async function startProcess() {
-  const meetingId = document.getElementById('processMeetingId').value;
-  const driveId   = document.getElementById('processDriveId').value.trim();
-  const prevId    = document.getElementById('processPrevId').value.trim();
+async function startTranscribe() {
+  const meetingId = document.getElementById('transcribeMeetingId').value;
+  const driveId   = document.getElementById('transcribeDriveId').value.trim();
   if (!driveId) { showToast('DriveファイルIDを入力してください', 'error'); return; }
-  closeModal('processModal');
+  closeModal('transcribeModal');
   try {
-    showToast('AI処理を開始しました', 'info');
-    await api(`/api/meetings/${meetingId}/process`, {
+    showToast('文字起こしを開始しました', 'info');
+    await api(`/api/meetings/${meetingId}/transcribe`, {
       method: 'POST',
-      body: JSON.stringify({ drive_file_id: driveId, prev_meeting_id: prevId }),
+      body: JSON.stringify({ drive_file_id: driveId }),
     });
     await loadMeetings();
-    startPolling(meetingId);
+    startRowPolling(meetingId);
   } catch (e) {
-    showToast('処理開始エラー: ' + e.message, 'error');
+    showToast('文字起こし開始エラー: ' + e.message, 'error');
+  }
+}
+
+function openMinutesModal(meetingId) {
+  document.getElementById('minutesMeetingId').value = meetingId;
+  document.getElementById('minutesPrevId').value = '';
+  document.getElementById('minutesModal').classList.remove('hidden');
+}
+async function startMinutes() {
+  const meetingId = document.getElementById('minutesMeetingId').value;
+  const prevId    = document.getElementById('minutesPrevId').value.trim();
+  closeModal('minutesModal');
+  try {
+    showToast('議事録生成を開始しました', 'info');
+    await api(`/api/meetings/${meetingId}/minutes`, {
+      method: 'POST',
+      body: JSON.stringify({ prev_meeting_id: prevId }),
+    });
+    await loadMeetings();
+    startRowPolling(meetingId);
+  } catch (e) {
+    showToast('議事録生成エラー: ' + e.message, 'error');
+  }
+}
+
+async function triggerFlowchart(meetingId) {
+  try {
+    showToast('フローチャート生成を開始しました', 'info');
+    await api(`/api/meetings/${meetingId}/flowchart`, { method: 'POST' });
+    await loadMeetings();
+    startRowPolling(meetingId);
+  } catch (e) {
+    showToast('フロー生成エラー: ' + e.message, 'error');
+  }
+}
+
+async function triggerGantt(meetingId) {
+  try {
+    showToast('ガントチャート生成を開始しました', 'info');
+    await api(`/api/meetings/${meetingId}/gantt`, { method: 'POST' });
+    await loadMeetings();
+    startRowPolling(meetingId);
+  } catch (e) {
+    showToast('ガント生成エラー: ' + e.message, 'error');
   }
 }
 function closeModal(id, e) {

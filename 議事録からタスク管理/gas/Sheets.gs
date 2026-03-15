@@ -65,6 +65,94 @@ function updateMeetingStatus(meetingId, status, transcript, minutesJson, mermaid
 }
 
 /**
+ * 文字起こし列のみ更新（ステータスを「文字起こし完了」に変更）
+ */
+function updateTranscript(meetingId, transcript) {
+  const props = PropertiesService.getScriptProperties();
+  const ss = SpreadsheetApp.openById(props.getProperty('SPREADSHEET_ID'));
+  const sheet = ss.getSheetByName(SHEET_MEETINGS);
+  if (!sheet) throw new Error(`シート "${SHEET_MEETINGS}" が見つかりません`);
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === meetingId) {
+      const rowNum = i + 1;
+      sheet.getRange(rowNum, COL_STATUS).setValue('文字起こし完了');
+      sheet.getRange(rowNum, COL_TRANSCRIPT).setValue(transcript.substring(0, 50000));
+      logSheet('INFO', 'updateTranscript', `文字起こし保存完了: ${meetingId}`);
+      return;
+    }
+  }
+  throw new Error(`会議ID ${meetingId} が見つかりません`);
+}
+
+/**
+ * 議事録JSON列のみ更新（ステータスを「文字起こし完了」に戻す）
+ */
+function updateMinutesJson(meetingId, minutesJson) {
+  const props = PropertiesService.getScriptProperties();
+  const ss = SpreadsheetApp.openById(props.getProperty('SPREADSHEET_ID'));
+  const sheet = ss.getSheetByName(SHEET_MEETINGS);
+  if (!sheet) throw new Error(`シート "${SHEET_MEETINGS}" が見つかりません`);
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === meetingId) {
+      const rowNum = i + 1;
+      sheet.getRange(rowNum, COL_STATUS).setValue('文字起こし完了');
+      sheet.getRange(rowNum, COL_MINUTES_JSON).setValue(minutesJson.substring(0, 50000));
+      logSheet('INFO', 'updateMinutesJson', `議事録JSON保存完了: ${meetingId}`);
+      return;
+    }
+  }
+  throw new Error(`会議ID ${meetingId} が見つかりません`);
+}
+
+/**
+ * MermaidCode列のみ更新（ステータスを「文字起こし完了」に戻す）
+ */
+function updateMermaidCode(meetingId, mermaidCode) {
+  const props = PropertiesService.getScriptProperties();
+  const ss = SpreadsheetApp.openById(props.getProperty('SPREADSHEET_ID'));
+  const sheet = ss.getSheetByName(SHEET_MEETINGS);
+  if (!sheet) throw new Error(`シート "${SHEET_MEETINGS}" が見つかりません`);
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === meetingId) {
+      const rowNum = i + 1;
+      sheet.getRange(rowNum, COL_STATUS).setValue('文字起こし完了');
+      sheet.getRange(rowNum, COL_MERMAID).setValue(mermaidCode.substring(0, 10000));
+      logSheet('INFO', 'updateMermaidCode', `MermaidCode保存完了: ${meetingId}`);
+      return;
+    }
+  }
+  throw new Error(`会議ID ${meetingId} が見つかりません`);
+}
+
+/**
+ * ガントJSON列のみ更新（ステータスを「文字起こし完了」に戻す）
+ */
+function updateGanttJson(meetingId, ganttJson) {
+  const props = PropertiesService.getScriptProperties();
+  const ss = SpreadsheetApp.openById(props.getProperty('SPREADSHEET_ID'));
+  const sheet = ss.getSheetByName(SHEET_MEETINGS);
+  if (!sheet) throw new Error(`シート "${SHEET_MEETINGS}" が見つかりません`);
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === meetingId) {
+      const rowNum = i + 1;
+      sheet.getRange(rowNum, COL_STATUS).setValue('文字起こし完了');
+      sheet.getRange(rowNum, COL_GANTT_JSON).setValue(ganttJson.substring(0, 50000));
+      logSheet('INFO', 'updateGanttJson', `ガントJSON保存完了: ${meetingId}`);
+      return;
+    }
+  }
+  throw new Error(`会議ID ${meetingId} が見つかりません`);
+}
+
+/**
  * ログシートに記録する
  */
 function logSheet(level, source, message) {
