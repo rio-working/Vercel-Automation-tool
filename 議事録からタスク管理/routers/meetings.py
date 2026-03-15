@@ -56,6 +56,14 @@ class ProcessRequest(BaseModel):
     prev_meeting_id: Optional[str] = ""
 
 
+class TranscribeRequest(BaseModel):
+    drive_file_id: str
+
+
+class MinutesRequest(BaseModel):
+    prev_meeting_id: Optional[str] = ""
+
+
 @router.get("")
 def list_meetings(
     project_id: Optional[str] = Query(None),
@@ -101,13 +109,7 @@ async def process_meeting(
 
     # ステータスを「処理中」に更新
     ws = get_worksheet(_SHEET)
-    values = ws.get_all_values()
-    row_index = None
-    for i, row in enumerate(values[1:], start=2):
-        if row and row[COL_ID] == meeting_id:
-            row_index = i
-            break
-
+    row_index = _find_row_index(ws, meeting_id)
     if row_index is None:
         raise HTTPException(status_code=404, detail="会議が見つかりません")
 
@@ -122,20 +124,149 @@ async def process_meeting(
         "drive_file_id": body.drive_file_id,
         "prev_meeting_id": body.prev_meeting_id,
     }
-
-    try:
-        async with httpx.AsyncClient() as client:
-            await client.post(gas_url, json=payload, timeout=8.0)
-    except httpx.TimeoutException:
-        # タイムアウトはGAS処理継続中として正常扱い（GASは最大6分かかる）
-        log_info("process_meeting", f"GAS処理継続中（タイムアウト正常）: {meeting_id}")
-    except Exception:
-        ws.update_cell(row_index, COL_STATUS + 1, "エラー")
-        log_error("process_meeting", f"GAS呼び出し失敗: {meeting_id}")
-        raise HTTPException(status_code=500, detail="GASへの処理依頼に失敗しました")
+    await _call_gas_fire_and_forget(gas_url, payload, "process_meeting", meeting_id)
 
     log_info("process_meeting", f"AI処理依頼送信: {meeting_id}")
     return {"success": True, "message": "AI処理を開始しました", "meeting_id": meeting_id}
+
+
+def _find_row_index(ws, meeting_id: str) -> int:
+    """会議IDの行番号（1-based）を返す。見つからなければ None。"""
+    values = ws.get_all_values()
+    for i, row in enumerate(values[1:], start=2):
+        if row and row[COL_ID] == meeting_id:
+            return i
+    return None
+
+
+async def _call_gas_fire_and_forget(gas_url: str, payload: dict, log_source: str, meeting_id: str):
+    """GASへ fire-and-forget でリクエストし、タイムアウトは正常扱いにする。
+    GAS Web AppはPOST時に302リダイレクト→GET変換でbodyが消えるため、
+    GET+クエリパラメータで送信する。
+    """
+    try:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            await client.get(gas_url, params=payload, timeout=10.0)
+    except httpx.TimeoutException:
+        log_info(log_source, f"GAS処理継続中（タイムアウト正常）: {meeting_id}")
+    except Exception as e:
+        log_error(log_source, f"GAS呼び出しエラー（処理継続の可能性あり）: {meeting_id}: {e}")
+
+
+@router.post("/{meeting_id}/transcribe")
+async def transcribe_meeting(
+    meeting_id: str,
+    body: TranscribeRequest,
+    _token=Depends(verify_token),
+):
+    """①文字起こし開始：ステータスを「文字起こし中」に更新してGASに依頼する。"""
+    gas_url = os.environ.get("GAS_WEB_APP_URL", "")
+    if not gas_url:
+        raise HTTPException(status_code=500, detail="GAS_WEB_APP_URL が未設定です")
+
+    ws = get_worksheet(_SHEET)
+    row_index = _find_row_index(ws, meeting_id)
+    if row_index is None:
+        raise HTTPException(status_code=404, detail="会議が見つかりません")
+
+    ws.update_cell(row_index, COL_STATUS + 1, "文字起こし中")
+
+    token = os.environ.get("API_SECRET_TOKEN", "")
+    payload = {
+        "action": "transcribeAudio",
+        "token": token,
+        "meeting_id": meeting_id,
+        "drive_file_id": body.drive_file_id,
+    }
+    await _call_gas_fire_and_forget(gas_url, payload, "transcribe_meeting", meeting_id)
+    log_info("transcribe_meeting", f"文字起こし依頼送信: {meeting_id}")
+    return {"success": True, "message": "文字起こしを開始しました", "meeting_id": meeting_id}
+
+
+@router.post("/{meeting_id}/minutes")
+async def generate_minutes(
+    meeting_id: str,
+    body: MinutesRequest,
+    _token=Depends(verify_token),
+):
+    """②議事録生成開始：ステータスを「議事録生成中」に更新してGASに依頼する。"""
+    gas_url = os.environ.get("GAS_WEB_APP_URL", "")
+    if not gas_url:
+        raise HTTPException(status_code=500, detail="GAS_WEB_APP_URL が未設定です")
+
+    ws = get_worksheet(_SHEET)
+    row_index = _find_row_index(ws, meeting_id)
+    if row_index is None:
+        raise HTTPException(status_code=404, detail="会議が見つかりません")
+
+    ws.update_cell(row_index, COL_STATUS + 1, "議事録生成中")
+
+    token = os.environ.get("API_SECRET_TOKEN", "")
+    payload = {
+        "action": "generateMinutes",
+        "token": token,
+        "meeting_id": meeting_id,
+        "prev_meeting_id": body.prev_meeting_id,
+    }
+    await _call_gas_fire_and_forget(gas_url, payload, "generate_minutes", meeting_id)
+    log_info("generate_minutes", f"議事録生成依頼送信: {meeting_id}")
+    return {"success": True, "message": "議事録生成を開始しました", "meeting_id": meeting_id}
+
+
+@router.post("/{meeting_id}/flowchart")
+async def generate_flowchart(
+    meeting_id: str,
+    _token=Depends(verify_token),
+):
+    """③フローチャート生成開始：ステータスを「フロー生成中」に更新してGASに依頼する。"""
+    gas_url = os.environ.get("GAS_WEB_APP_URL", "")
+    if not gas_url:
+        raise HTTPException(status_code=500, detail="GAS_WEB_APP_URL が未設定です")
+
+    ws = get_worksheet(_SHEET)
+    row_index = _find_row_index(ws, meeting_id)
+    if row_index is None:
+        raise HTTPException(status_code=404, detail="会議が見つかりません")
+
+    ws.update_cell(row_index, COL_STATUS + 1, "フロー生成中")
+
+    token = os.environ.get("API_SECRET_TOKEN", "")
+    payload = {
+        "action": "generateFlowchart",
+        "token": token,
+        "meeting_id": meeting_id,
+    }
+    await _call_gas_fire_and_forget(gas_url, payload, "generate_flowchart", meeting_id)
+    log_info("generate_flowchart", f"フロー生成依頼送信: {meeting_id}")
+    return {"success": True, "message": "フローチャート生成を開始しました", "meeting_id": meeting_id}
+
+
+@router.post("/{meeting_id}/gantt")
+async def generate_gantt(
+    meeting_id: str,
+    _token=Depends(verify_token),
+):
+    """④ガントチャート生成開始：ステータスを「ガント生成中」に更新してGASに依頼する。"""
+    gas_url = os.environ.get("GAS_WEB_APP_URL", "")
+    if not gas_url:
+        raise HTTPException(status_code=500, detail="GAS_WEB_APP_URL が未設定です")
+
+    ws = get_worksheet(_SHEET)
+    row_index = _find_row_index(ws, meeting_id)
+    if row_index is None:
+        raise HTTPException(status_code=404, detail="会議が見つかりません")
+
+    ws.update_cell(row_index, COL_STATUS + 1, "ガント生成中")
+
+    token = os.environ.get("API_SECRET_TOKEN", "")
+    payload = {
+        "action": "generateGantt",
+        "token": token,
+        "meeting_id": meeting_id,
+    }
+    await _call_gas_fire_and_forget(gas_url, payload, "generate_gantt", meeting_id)
+    log_info("generate_gantt", f"ガント生成依頼送信: {meeting_id}")
+    return {"success": True, "message": "ガントチャート生成を開始しました", "meeting_id": meeting_id}
 
 
 @router.get("/{meeting_id}/status")
