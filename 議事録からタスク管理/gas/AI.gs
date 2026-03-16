@@ -11,8 +11,22 @@
  *    Files API の resumable upload は使用不可。inline_data で回避。
  */
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_GENERATE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
+
+/** Gemini APIが対応する音声MIMEタイプ */
+const SUPPORTED_AUDIO_MIMES = ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'];
+
+/** DriveのMIMEタイプをGemini対応形式に変換 */
+function _normalizeMimeType(driveMime) {
+  if (SUPPORTED_AUDIO_MIMES.includes(driveMime)) return driveMime;
+  // audio/mp4, audio/x-m4a, video/mp4 等 → audio/aac として送信
+  if (driveMime && (driveMime.includes('mp4') || driveMime.includes('m4a'))) return 'audio/aac';
+  // audio/x-wav → audio/wav
+  if (driveMime && driveMime.includes('wav')) return 'audio/wav';
+  // 不明な場合はmp3として試行
+  return 'audio/mp3';
+}
 
 /**
  * メイン処理エントリポイント（Code.gsから呼び出し）
@@ -27,7 +41,7 @@ function processMeeting(meetingId, driveFileId, prevMeetingId) {
   // 1. ファイルサイズチェック（Base64後約1.33倍になるため37MB上限でUrlFetchApp 50MB超を防ぐ）
   const file = DriveApp.getFileById(driveFileId);
   const fileSize = file.getSize();
-  const MAX_BYTES = 37 * 1024 * 1024;
+  const MAX_BYTES = 19 * 1024 * 1024; // inline_data上限20MB（余裕を持って19MB）
   if (fileSize > MAX_BYTES) {
     const msg = `ファイルサイズ超過: ${Math.round(fileSize / 1024 / 1024)}MB（上限37MB）。音声を圧縮・分割してください。`;
     logSheet('ERROR', 'processMeeting', msg);
@@ -53,7 +67,7 @@ function processMeeting(meetingId, driveFileId, prevMeetingId) {
     if (dlRes.getResponseCode() !== 200) {
       throw new Error('Driveダウンロード失敗: ' + dlRes.getContentText().substring(0, 200));
     }
-    const mimeType = file.getMimeType() || 'audio/mp4';
+    const mimeType = _normalizeMimeType(file.getMimeType());
     const base64Audio = Utilities.base64Encode(dlRes.getContent());
     logSheet('INFO', 'processMeeting', 'Base64エンコード完了。Gemini処理開始...');
 
@@ -191,7 +205,7 @@ function transcribeAudio(meetingId, driveFileId) {
 
   const file = DriveApp.getFileById(driveFileId);
   const fileSize = file.getSize();
-  const MAX_BYTES = 37 * 1024 * 1024;
+  const MAX_BYTES = 19 * 1024 * 1024; // inline_data上限20MB（余裕を持って19MB）
   if (fileSize > MAX_BYTES) {
     const msg = `ファイルサイズ超過: ${Math.round(fileSize / 1024 / 1024)}MB（上限37MB）`;
     logSheet('ERROR', 'transcribeAudio', msg);
@@ -208,7 +222,7 @@ function transcribeAudio(meetingId, driveFileId) {
     if (dlRes.getResponseCode() !== 200) {
       throw new Error('Driveダウンロード失敗: ' + dlRes.getContentText().substring(0, 200));
     }
-    const mimeType = file.getMimeType() || 'audio/mp4';
+    const mimeType = _normalizeMimeType(file.getMimeType());
     const base64Audio = Utilities.base64Encode(dlRes.getContent());
 
     const transcript = _transcribeWithGemini(apiKey, base64Audio, mimeType);
