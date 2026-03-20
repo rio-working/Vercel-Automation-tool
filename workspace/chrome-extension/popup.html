@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">Workspace Quick Add</div>
+
+  <!-- タブ切り替え -->
+  <div class="tabs">
+    <button class="tab active" data-tab="task" onclick="switchTab('task')">☑️ タスク</button>
+    <button class="tab" data-tab="event" onclick="switchTab('event')">📅 予定</button>
+  </div>
+
+  <!-- タスク作成フォーム -->
+  <div class="tab-content active" id="tab-task">
+    <div class="form-group">
+      <label>タイトル</label>
+      <input type="text" id="task-title" placeholder="タスクのタイトル">
+    </div>
+    <div class="form-group">
+      <label>期限</label>
+      <input type="datetime-local" id="task-due">
+    </div>
+    <div class="form-group">
+      <label>リスト</label>
+      <select id="task-list"><option value="">読み込み中…</option></select>
+    </div>
+    <div class="form-group">
+      <label>メモ</label>
+      <textarea id="task-notes" rows="2" placeholder="メモ（任意）"></textarea>
+    </div>
+    <button class="btn-submit" id="task-submit" onclick="submitTask()">タスクを追加</button>
+  </div>
+
+  <!-- イベント作成フォーム -->
+  <div class="tab-content" id="tab-event">
+    <div class="form-group">
+      <label>タイトル</label>
+      <input type="text" id="event-title" placeholder="予定のタイトル">
+    </div>
+    <div class="form-group">
+      <label>開始日時</label>
+      <input type="datetime-local" id="event-start">
+    </div>
+    <div class="form-group">
+      <label>終了日時</label>
+      <input type="datetime-local" id="event-end">
+    </div>
+    <div class="form-group">
+      <label>カレンダー</label>
+      <select id="event-calendar"><option value="">読み込み中…</option></select>
+    </div>
+    <div class="form-group">
+      <label>場所</label>
+      <input type="text" id="event-location" placeholder="場所（任意）">
+    </div>
+    <div class="form-group">
+      <label>説明</label>
+      <textarea id="event-description" rows="2" placeholder="説明（任意）"></textarea>
+    </div>
+    <button class="btn-submit" id="event-submit" onclick="submitEvent()">予定を追加</button>
+  </div>
+
+  <div class="status" id="status"></div>
+  <div class="footer">
+    <a href="options.html" target="_blank">設定</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

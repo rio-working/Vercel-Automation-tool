@@ -51,18 +51,22 @@ function getAgenda() {
         const isAllDay = event.isAllDayEvent();
         let timeStr = '終日';
         let startIso = null;
+        let endIso = null;
         if (!isAllDay) {
           const s = event.getStartTime();
+          const eEnd = event.getEndTime();
           const h = s.getHours().toString().padStart(2, '0');
           const m = s.getMinutes().toString().padStart(2, '0');
           timeStr = h + ':' + m;
           startIso = s.toISOString();
+          endIso = eEnd.toISOString();
         }
         events.push({
           id:          eid,
           title:       event.getTitle() || '（タイトルなし）',
           time:        timeStr,
           start:       startIso,
+          end:         endIso,
           location:    event.getLocation() || '',
           description: event.getDescription() || '',
           all_day:     isAllDay,
@@ -113,4 +117,23 @@ function getCalendarLists() {
       return { id, summary: id };
     }
   });
+}
+
+function createEvent(calendarId, title, startTime, endTime, location, description) {
+  const cal = CalendarApp.getCalendarById(calendarId);
+  const options = {};
+  if (location) options.location = location;
+  if (description) options.description = description;
+  const event = cal.createEvent(title, new Date(startTime), new Date(endTime), options);
+  return { id: event.getId(), title: event.getTitle() };
+}
+
+function updateEvent(calendarId, eventId, title, startTime, endTime, location, description) {
+  const cal = CalendarApp.getCalendarById(calendarId);
+  const event = cal.getEventById(eventId);
+  if (title) event.setTitle(title);
+  if (startTime && endTime) event.setTime(new Date(startTime), new Date(endTime));
+  if (location !== undefined) event.setLocation(location || '');
+  if (description !== undefined) event.setDescription(description || '');
+  return { success: true };
 }

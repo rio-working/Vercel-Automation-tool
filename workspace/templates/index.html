@@ -981,7 +981,8 @@ body {
   <div class="widget" id="widget-agenda">
     <div class="card">
       <div class="card-title">📅 本日のアジェンダ
-        <button class="btn btn-ghost btn-sm" onclick="loadAgenda()" style="margin-left:auto">更新</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEventModal('create')" style="margin-left:auto">+ 予定</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadAgenda()">更新</button>
       </div>
       <div class="agenda-list" id="agenda-list">
         <div class="skeleton" style="height:64px;"></div>
@@ -989,7 +990,9 @@ body {
       </div>
       <!-- Google Tasks セクション -->
       <div class="tasks-section" id="tasks-section" style="display:none;">
-        <div class="tasks-section-title">☑️ 本日のタスク (Google Tasks)</div>
+        <div class="tasks-section-title" style="display:flex;align-items:center;gap:8px;">☑️ 本日のタスク (Google Tasks)
+        <button class="btn btn-ghost btn-sm" onclick="openTaskModal('create')" style="font-size:12px;">+ タスク</button>
+      </div>
         <div id="tasks-list"></div>
       </div>
     </div>
@@ -1309,6 +1312,78 @@ body {
 </div>
 
 <!-- =============================================
+   Google Tasks 作成・編集モーダル
+============================================= -->
+<div class="modal-overlay" id="modal-gtask">
+  <div class="modal">
+    <div class="modal-title" id="modal-gtask-title">☑️ タスクを追加</div>
+    <input type="hidden" id="gtask-mode" value="create">
+    <input type="hidden" id="gtask-edit-id" value="">
+    <input type="hidden" id="gtask-edit-list-id" value="">
+    <div class="form-group">
+      <label class="form-label">タイトル（必須）</label>
+      <input class="form-input" id="gtask-title" type="text" placeholder="タスクのタイトル">
+    </div>
+    <div class="form-group">
+      <label class="form-label">期限</label>
+      <input class="form-input" id="gtask-due" type="datetime-local">
+    </div>
+    <div class="form-group">
+      <label class="form-label">リスト</label>
+      <select class="form-input" id="gtask-list"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ</label>
+      <textarea class="form-input" id="gtask-notes" rows="3" placeholder="メモ（任意）" style="resize:vertical;"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-gtask')">キャンセル</button>
+      <button class="btn btn-primary" id="gtask-submit-btn" onclick="submitTask()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+   Google Calendar イベント作成・編集モーダル
+============================================= -->
+<div class="modal-overlay" id="modal-gevent">
+  <div class="modal">
+    <div class="modal-title" id="modal-gevent-title">📅 予定を追加</div>
+    <input type="hidden" id="gevent-mode" value="create">
+    <input type="hidden" id="gevent-edit-id" value="">
+    <input type="hidden" id="gevent-edit-cal-id" value="">
+    <div class="form-group">
+      <label class="form-label">タイトル（必須）</label>
+      <input class="form-input" id="gevent-title" type="text" placeholder="予定のタイトル">
+    </div>
+    <div class="form-group">
+      <label class="form-label">開始日時（必須）</label>
+      <input class="form-input" id="gevent-start" type="datetime-local">
+    </div>
+    <div class="form-group">
+      <label class="form-label">終了日時（必須）</label>
+      <input class="form-input" id="gevent-end" type="datetime-local">
+    </div>
+    <div class="form-group">
+      <label class="form-label">カレンダー</label>
+      <select class="form-input" id="gevent-calendar"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">場所</label>
+      <input class="form-input" id="gevent-location" type="text" placeholder="場所（任意）">
+    </div>
+    <div class="form-group">
+      <label class="form-label">説明</label>
+      <textarea class="form-input" id="gevent-description" rows="3" placeholder="説明（任意）" style="resize:vertical;"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-gevent')">キャンセル</button>
+      <button class="btn btn-primary" id="gevent-submit-btn" onclick="submitEvent()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
    トークン入力画面
 ============================================= -->
 <div id="login-screen" style="display:none;position:fixed;inset:0;background:var(--bg-base);z-index:9998;align-items:center;justify-content:center;">
@@ -1596,6 +1671,7 @@ async function loadAgenda() {
                   ${e.html_link ? `<a href="${escHtml(e.html_link)}" target="_blank" style="color:inherit;text-decoration:none;">${escHtml(e.title)}</a>` : escHtml(e.title)}
                   ${e.all_day ? '<span style="font-size:11px;background:var(--pale-blue);color:var(--accent-blue);padding:2px 6px;border-radius:4px;margin-left:6px;">終日</span>' : ''}
                 </div>
+                <button class="comment-btn" onclick="openEventModal('edit', agendaData[${idx}])" title="編集" style="opacity:0.5;">✏️</button>
                 <button class="comment-btn ${savedComment ? 'has-comment' : ''}" id="cb-ev-${idx}"
                   data-comment-key="comment_event_${e.id}" data-btn-id="cb-ev-${idx}"
                   onclick="toggleCommentWrap('ci-ev-${idx}')" title="メモ">💬</button>
@@ -1688,6 +1764,7 @@ async function loadTasks() {
           <div class="todo-check" onclick="completeTask('${t.id}', '${t.list_id || ''}', this)" title="完了にする"></div>
           <span style="flex:1">${escHtml(t.title)}</span>
           ${t.is_today ? '<span class="task-due">今日が期限</span>' : (t.due ? `<span class="task-due">${escHtml(t.due)}</span>` : '')}
+          <button class="comment-btn" onclick="openTaskModal('edit', agendaTasks[${idx}])" title="編集" style="opacity:0.5;">✏️</button>
           <button class="comment-btn ${savedComment ? 'has-comment' : ''}" id="cb-tk-${idx}"
             data-comment-key="comment_task_${t.id}" data-btn-id="cb-tk-${idx}"
             onclick="toggleCommentWrap('ci-tk-${idx}')" title="メモ">💬</button>
@@ -1702,6 +1779,170 @@ async function loadTasks() {
   } catch {
     // 503（環境変数未設定）は無視
     document.getElementById('tasks-section').style.display = 'none';
+  }
+}
+
+// =============================================
+// Google Tasks 作成・編集
+// =============================================
+let cachedTaskLists = null;
+
+async function openTaskModal(mode, taskData) {
+  document.getElementById('gtask-mode').value = mode;
+  document.getElementById('gtask-title').value = '';
+  document.getElementById('gtask-due').value = '';
+  document.getElementById('gtask-notes').value = '';
+  document.getElementById('gtask-edit-id').value = '';
+  document.getElementById('gtask-edit-list-id').value = '';
+
+  if (mode === 'edit' && taskData) {
+    document.getElementById('modal-gtask-title').textContent = '☑️ タスクを編集';
+    document.getElementById('gtask-submit-btn').textContent = '保存';
+    document.getElementById('gtask-title').value = taskData.title || '';
+    if (taskData.due) {
+      const d = taskData.due.length === 10 ? taskData.due + 'T00:00' : taskData.due.substring(0, 16);
+      document.getElementById('gtask-due').value = d;
+    }
+    document.getElementById('gtask-notes').value = taskData.notes || '';
+    document.getElementById('gtask-edit-id').value = taskData.id;
+    document.getElementById('gtask-edit-list-id').value = taskData.list_id || '';
+  } else {
+    document.getElementById('modal-gtask-title').textContent = '☑️ タスクを追加';
+    document.getElementById('gtask-submit-btn').textContent = '追加';
+  }
+
+  // リスト読み込み
+  const sel = document.getElementById('gtask-list');
+  if (!cachedTaskLists) {
+    try { cachedTaskLists = await gasApi('getTaskLists'); } catch { cachedTaskLists = []; }
+  }
+  sel.innerHTML = cachedTaskLists.map(l =>
+    `<option value="${escHtml(l.id)}" ${(taskData && taskData.list_id === l.id) ? 'selected' : ''}>${escHtml(l.title)}</option>`
+  ).join('');
+
+  openModal('modal-gtask');
+}
+
+async function submitTask() {
+  const mode = document.getElementById('gtask-mode').value;
+  const title = document.getElementById('gtask-title').value.trim();
+  if (!title) { alert('タイトルを入力してください'); return; }
+
+  const listId = document.getElementById('gtask-list').value;
+  const due = document.getElementById('gtask-due').value || null;
+  const notes = document.getElementById('gtask-notes').value || '';
+
+  const btn = document.getElementById('gtask-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '処理中…';
+
+  try {
+    if (mode === 'edit') {
+      const taskId = document.getElementById('gtask-edit-id').value;
+      const editListId = document.getElementById('gtask-edit-list-id').value || listId;
+      await gasApi('updateTask', { list_id: editListId, task_id: taskId, title, due, notes });
+    } else {
+      await gasApi('createTask', { list_id: listId, title, due, notes });
+    }
+    closeModal('modal-gtask');
+    await loadTasks();
+  } catch (e) {
+    alert('エラー: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = mode === 'edit' ? '保存' : '追加';
+  }
+}
+
+// =============================================
+// Google Calendar イベント作成・編集
+// =============================================
+let cachedCalendarLists = null;
+
+async function openEventModal(mode, eventData) {
+  document.getElementById('gevent-mode').value = mode;
+  document.getElementById('gevent-title').value = '';
+  document.getElementById('gevent-start').value = '';
+  document.getElementById('gevent-end').value = '';
+  document.getElementById('gevent-location').value = '';
+  document.getElementById('gevent-description').value = '';
+  document.getElementById('gevent-edit-id').value = '';
+  document.getElementById('gevent-edit-cal-id').value = '';
+
+  if (mode === 'edit' && eventData) {
+    document.getElementById('modal-gevent-title').textContent = '📅 予定を編集';
+    document.getElementById('gevent-submit-btn').textContent = '保存';
+    document.getElementById('gevent-title').value = eventData.title || '';
+    if (eventData.start) {
+      document.getElementById('gevent-start').value = eventData.start.substring(0, 16);
+    }
+    if (eventData.end) {
+      document.getElementById('gevent-end').value = eventData.end.substring(0, 16);
+    }
+    document.getElementById('gevent-location').value = eventData.location || '';
+    document.getElementById('gevent-description').value = eventData.description || '';
+    document.getElementById('gevent-edit-id').value = eventData.id;
+    document.getElementById('gevent-edit-cal-id').value = eventData.calendar_id || '';
+  } else {
+    document.getElementById('modal-gevent-title').textContent = '📅 予定を追加';
+    document.getElementById('gevent-submit-btn').textContent = '追加';
+    // デフォルト: 現在時刻の次の正時～1時間後
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    now.setHours(now.getHours() + 1);
+    const end = new Date(now.getTime() + 60 * 60 * 1000);
+    document.getElementById('gevent-start').value = toLocalIso(now);
+    document.getElementById('gevent-end').value = toLocalIso(end);
+  }
+
+  // カレンダー一覧読み込み
+  const sel = document.getElementById('gevent-calendar');
+  if (!cachedCalendarLists) {
+    try { cachedCalendarLists = await gasApi('getCalendarLists'); } catch { cachedCalendarLists = []; }
+  }
+  sel.innerHTML = cachedCalendarLists.map(c =>
+    `<option value="${escHtml(c.id)}" ${(eventData && eventData.calendar_id === c.id) ? 'selected' : ''}>${escHtml(c.summary)}</option>`
+  ).join('');
+
+  openModal('modal-gevent');
+}
+
+function toLocalIso(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+async function submitEvent() {
+  const mode = document.getElementById('gevent-mode').value;
+  const title = document.getElementById('gevent-title').value.trim();
+  const start = document.getElementById('gevent-start').value;
+  const end = document.getElementById('gevent-end').value;
+  if (!title) { alert('タイトルを入力してください'); return; }
+  if (!start || !end) { alert('開始・終了日時を入力してください'); return; }
+
+  const calendarId = document.getElementById('gevent-calendar').value;
+  const location = document.getElementById('gevent-location').value || '';
+  const description = document.getElementById('gevent-description').value || '';
+
+  const btn = document.getElementById('gevent-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '処理中…';
+
+  try {
+    if (mode === 'edit') {
+      const eventId = document.getElementById('gevent-edit-id').value;
+      const editCalId = document.getElementById('gevent-edit-cal-id').value || calendarId;
+      await gasApi('updateEvent', { calendar_id: editCalId, event_id: eventId, title, start_time: start, end_time: end, location, description });
+    } else {
+      await gasApi('createEvent', { calendar_id: calendarId, title, start_time: start, end_time: end, location, description });
+    }
+    closeModal('modal-gevent');
+    await loadAgenda();
+  } catch (e) {
+    alert('エラー: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = mode === 'edit' ? '保存' : '追加';
   }
 }
 

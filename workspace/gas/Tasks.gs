@@ -58,3 +58,20 @@ function getTaskLists() {
   const lists = (Tasks.Tasklists.list().items) || [];
   return lists.map(l => ({ id: l.id, title: l.title }));
 }
+
+function createTask(listId, title, due, notes) {
+  const task = { title: title };
+  if (due) task.due = new Date(due).toISOString();
+  if (notes) task.notes = notes;
+  const created = Tasks.Tasks.insert(task, listId);
+  return { id: created.id, title: created.title };
+}
+
+function updateTask(listId, taskId, title, due, notes) {
+  const resource = {};
+  if (title !== undefined) resource.title = title;
+  if (due !== undefined) resource.due = due ? new Date(due).toISOString() : null;
+  if (notes !== undefined) resource.notes = notes;
+  Tasks.Tasks.patch(resource, listId, taskId);
+  return { success: true };
+}

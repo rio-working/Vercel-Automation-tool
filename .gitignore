@@ -3,6 +3,7 @@
 *.json
 !vercel.json
 !**/appsscript.json
+!**/chrome-extension/manifest.json
 
 # Python
 __pycache__/
