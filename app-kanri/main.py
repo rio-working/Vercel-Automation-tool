@@ -33,10 +33,12 @@ def index():
 def api_get_data():
     apps = db.get_apps()
     notice = db.get_notice()
+    settings = db.get_settings()
     return jsonify({
         "apps": apps,
         "notice": notice,
         "spreadsheetUrl": SPREADSHEET_URL,
+        "targetCount": int(settings.get("targetCount", 100)),
     })
 
 

@@ -135,7 +135,14 @@ def save_app(data: dict) -> dict:
     if target_row == -1:
         # 新規追加
         new_id = max_id + 1
-        date_str = datetime.now(JST).strftime("%Y/%m/%d")
+        provided_date = str(data.get("date", "")).strip()
+        if provided_date:
+            try:
+                date_str = datetime.strptime(provided_date, "%Y-%m-%d").strftime("%Y/%m/%d")
+            except ValueError:
+                date_str = datetime.now(JST).strftime("%Y/%m/%d")
+        else:
+            date_str = datetime.now(JST).strftime("%Y/%m/%d")
         row_values = [
             new_id,
             date_str,

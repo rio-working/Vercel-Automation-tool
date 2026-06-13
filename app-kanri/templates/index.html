@@ -99,6 +99,12 @@
       border: 1px solid var(--border-default);
       box-shadow: var(--shadow-card);
       display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .stats-row {
+      display: flex;
       justify-content: space-around;
       text-align: center;
     }
@@ -118,6 +124,29 @@
     .stat-label {
       font-size: 0.75rem;
       opacity: 0.7;
+    }
+
+    /* 進捗バー */
+    .progress-wrap {
+      width: 100%;
+      height: 8px;
+      background: var(--border-default);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-gradient);
+      border-radius: 99px;
+      transition: width 0.8s ease;
+      width: 0%;
+    }
+
+    .progress-label {
+      font-size: 0.75rem;
+      opacity: 0.7;
+      text-align: right;
     }
 
     /* ツールバー */
@@ -505,7 +534,7 @@
         justify-content: flex-end;
       }
 
-      .stats-box {
+      .stats-row {
         flex-wrap: wrap;
         gap: 15px;
       }
@@ -539,18 +568,24 @@
     </header>
 
     <div class="stats-box">
-      <div class="stat-item">
-        <span id="stat-total" class="stat-value">0</span>
-        <span class="stat-label">登録アプリ</span>
+      <div class="stats-row">
+        <div class="stat-item">
+          <span id="stat-total" class="stat-value">0</span>
+          <span class="stat-label">登録アプリ</span>
+        </div>
+        <div class="stat-item">
+          <span id="stat-likes" class="stat-value">0</span>
+          <span class="stat-label">総いいね</span>
+        </div>
+        <div class="stat-item">
+          <span id="stat-categories" class="stat-value">0</span>
+          <span class="stat-label">カテゴリ</span>
+        </div>
       </div>
-      <div class="stat-item">
-        <span id="stat-likes" class="stat-value">0</span>
-        <span class="stat-label">総いいね</span>
+      <div class="progress-wrap">
+        <div class="progress-fill" id="progress-fill"></div>
       </div>
-      <div class="stat-item">
-        <span id="stat-categories" class="stat-value">0</span>
-        <span class="stat-label">カテゴリ</span>
-      </div>
+      <div class="progress-label" id="progress-label"></div>
     </div>
 
     <div class="toolbar">
@@ -583,7 +618,14 @@
       <div class="form-group"><label>ID（数値）</label><input type="number" id="f-id" placeholder="自動採番（空欄可）"></div>
       <div class="form-group"><label>タイトル</label><input type="text" id="f-title" placeholder="アプリ名"></div>
       <div class="form-group"><label>説明</label><textarea id="f-desc" rows="3" placeholder="アプリの説明..."></textarea></div>
-      <div class="form-group"><label>カテゴリ</label><input type="text" id="f-cat" placeholder="ツール / ゲーム / etc"></div>
+      <div class="form-group">
+        <label>カテゴリ</label>
+        <select id="f-cat" onchange="onCatChange()">
+          <option value="">選択してください</option>
+        </select>
+        <input type="text" id="f-cat-new" placeholder="新しいカテゴリ名を入力" style="display:none; margin-top:6px;">
+      </div>
+      <div class="form-group"><label>作成日</label><input type="date" id="f-date"></div>
       <div class="form-group"><label>アプリURL</label><input type="text" id="f-url" placeholder="https://..."></div>
       <div class="form-group"><label>配布URL（ZIP等）</label><input type="text" id="f-zip" placeholder="https://..."></div>
       <div class="form-group"><label>スプレッドシートURL</label><input type="text" id="f-sheet" placeholder="https://..."></div>
@@ -608,6 +650,7 @@
 
   <script>
     let rawData = [];
+    let targetCount = 100;
     let isAdmin = !!sessionStorage.getItem('adminKey');
     let spreadsheetUrl = '';
     let favorites = JSON.parse(localStorage.getItem('appkanri_favs') || '[]');
@@ -644,6 +687,7 @@
         .then(function (res) {
           rawData = res.apps;
           spreadsheetUrl = res.spreadsheetUrl || '';
+          targetCount = res.targetCount || 100;
 
           if (res.notice) {
             document.getElementById('notice-area').innerHTML =
@@ -655,6 +699,7 @@
 
           updateStats();
           renderCategories();
+          buildCategorySelect('');
           updateView();
 
           document.getElementById('loading').style.opacity = '0';
@@ -677,6 +722,10 @@
       document.getElementById('stat-total').innerText = totalApps;
       document.getElementById('stat-likes').innerText = totalLikes;
       document.getElementById('stat-categories').innerText = categories;
+
+      var pct = Math.min(100, Math.round(totalApps / targetCount * 100));
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-label').innerText = totalApps + ' / ' + targetCount + ' 本（目標まであと ' + Math.max(0, targetCount - totalApps) + ' 本）';
     }
 
     function renderCategories() {
@@ -848,13 +897,24 @@
     }
 
     // 管理機能
-    function openAdminModal() {
+    function openAdminModal(fromEdit) {
       if (!sessionStorage.getItem('adminKey')) {
         var key = prompt('管理者キーを入力してください:');
         if (!key) return;
         sessionStorage.setItem('adminKey', key);
         isAdmin = true;
         updateView();
+      }
+      if (!fromEdit) {
+        document.getElementById('f-id').value = '';
+        document.getElementById('f-title').value = '';
+        document.getElementById('f-desc').value = '';
+        buildCategorySelect('');
+        document.getElementById('f-date').value = '';
+        document.getElementById('f-url').value = '';
+        document.getElementById('f-zip').value = '';
+        document.getElementById('f-sheet').value = '';
+        document.getElementById('f-note').value = '';
       }
       document.getElementById('adminModal').style.display = 'flex';
     }
@@ -891,12 +951,66 @@
         .catch(function (e) { alert('エラー: ' + e); });
     }
 
+    function buildCategorySelect(currentVal) {
+      var cats = [];
+      var seen = {};
+      rawData.forEach(function (a) {
+        if (a.category && !seen[a.category]) {
+          seen[a.category] = true;
+          cats.push(a.category);
+        }
+      });
+
+      var sel = document.getElementById('f-cat');
+      sel.innerHTML = '<option value="">選択してください</option>';
+      cats.forEach(function (c) {
+        var opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        sel.appendChild(opt);
+      });
+      var newOpt = document.createElement('option');
+      newOpt.value = '__new__';
+      newOpt.textContent = '＋ 新しいカテゴリ';
+      sel.appendChild(newOpt);
+
+      if (currentVal) {
+        sel.value = currentVal;
+        if (sel.value !== currentVal) {
+          sel.value = '__new__';
+          var newInput = document.getElementById('f-cat-new');
+          newInput.style.display = 'block';
+          newInput.value = currentVal;
+        }
+      }
+    }
+
+    function onCatChange() {
+      var sel = document.getElementById('f-cat');
+      var newInput = document.getElementById('f-cat-new');
+      if (sel.value === '__new__') {
+        newInput.style.display = 'block';
+        newInput.focus();
+      } else {
+        newInput.style.display = 'none';
+        newInput.value = '';
+      }
+    }
+
+    function getSelectedCategory() {
+      var sel = document.getElementById('f-cat');
+      return sel.value === '__new__'
+        ? document.getElementById('f-cat-new').value.trim()
+        : sel.value;
+    }
+
     function submitAppForm() {
       var data = {
         id: document.getElementById('f-id').value || null,
         title: document.getElementById('f-title').value,
         description: document.getElementById('f-desc').value,
-        category: document.getElementById('f-cat').value,
+        category: getSelectedCategory(),
+        date: document.getElementById('f-date').value,
         appUrl: document.getElementById('f-url').value,
         zipUrl: document.getElementById('f-zip').value,
         sheetUrl: document.getElementById('f-sheet').value,
@@ -941,12 +1055,14 @@
       document.getElementById('f-id').value = app.id;
       document.getElementById('f-title').value = app.title;
       document.getElementById('f-desc').value = app.description;
-      document.getElementById('f-cat').value = app.category;
+      buildCategorySelect(app.category || '');
+      var dateVal = app.date ? app.date.replace(/\//g, '-') : '';
+      document.getElementById('f-date').value = dateVal;
       document.getElementById('f-url').value = app.appUrl || '';
       document.getElementById('f-zip').value = app.zipUrl || '';
       document.getElementById('f-sheet').value = app.sheetUrl || '';
       document.getElementById('f-note').value = app.noteUrl || '';
-      openAdminModal();
+      openAdminModal(true);
     }
 
     // テーマ機能
