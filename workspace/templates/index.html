@@ -535,48 +535,6 @@ body {
 }
 
 /* =============================================
-   スクリーンセーバー
-============================================= */
-#screensaver {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  z-index: 9999;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  overflow: hidden;
-  cursor: pointer;
-}
-#screensaver canvas { position: absolute; inset: 0; }
-#screensaver .ss-time {
-  position: relative;
-  z-index: 2;
-  font-size: 80px;
-  font-weight: 200;
-  color: rgba(255,255,255,0.9);
-  letter-spacing: -2px;
-  font-family: 'Courier New', monospace;
-  text-shadow: 0 0 40px rgba(255,255,255,0.3);
-}
-#screensaver .ss-date {
-  position: relative;
-  z-index: 2;
-  font-size: 18px;
-  color: rgba(255,255,255,0.5);
-  letter-spacing: 4px;
-  margin-top: 8px;
-}
-#screensaver .ss-hint {
-  position: absolute;
-  bottom: 32px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.3);
-  z-index: 2;
-}
-
-/* =============================================
    FAB
 ============================================= */
 #fab {
@@ -915,20 +873,13 @@ body {
 <nav id="sidebar">
   <div class="sidebar-logo">🚀 Workspace</div>
 
-  <div class="nav-item active" data-widget="todos" onclick="switchWidget('todos', this)">
-    <span class="icon">✅</span><span>Smart ToDo</span>
-    <div class="nav-dot" id="dot-todos"></div>
-  </div>
-  <div class="nav-item" data-widget="agenda" onclick="switchWidget('agenda', this)">
-    <span class="icon">📅</span><span>アジェンダ</span>
-    <div class="nav-dot" id="dot-agenda"></div>
+  <div class="nav-item active" data-widget="schedule" onclick="switchWidget('schedule', this)">
+    <span class="icon">📅</span><span>スケジュール</span>
+    <div class="nav-dot" id="dot-schedule"></div>
   </div>
   <div class="nav-item" data-widget="chat" onclick="switchWidget('chat', this)">
     <span class="icon">🤖</span><span>AI壁打ち</span>
     <div class="nav-dot" id="dot-chat"></div>
-  </div>
-  <div class="nav-item" data-widget="journal" onclick="switchWidget('journal', this)">
-    <span class="icon">📝</span><span>日報</span>
   </div>
   <div class="nav-item" data-widget="links" onclick="switchWidget('links', this)">
     <span class="icon">🔗</span><span>クイックリンク</span>
@@ -942,10 +893,6 @@ body {
   <div class="nav-item" data-widget="settings" onclick="switchWidget('settings', this)">
     <span class="icon">⚙️</span><span>設定</span>
   </div>
-  <div class="nav-item" data-widget="screensaver-widget" onclick="startScreensaver()">
-    <span class="icon">🌌</span><span>スクリーンセーバー</span>
-  </div>
-
   <div class="sidebar-bottom">
     <div class="theme-toggle" onclick="toggleTheme()">
       <span id="theme-icon">🌙</span>
@@ -959,26 +906,8 @@ body {
 ============================================= -->
 <main id="main">
 
-  <!-- ToDo ウィジェット -->
-  <div class="widget active fade-in" id="widget-todos">
-    <div class="card">
-      <div class="card-title">✅ Smart ToDo
-        <button class="btn btn-ghost btn-sm" onclick="loadTodos()" style="margin-left:auto">更新</button>
-      </div>
-      <div class="todo-input-row">
-        <input id="todo-input" type="text" placeholder="タスクを入力して Enter… (AIが優先度・工数を判定)" onkeydown="if(event.key==='Enter')addTodo()">
-        <button class="btn btn-primary" onclick="addTodo()">追加</button>
-      </div>
-      <div class="todo-list" id="todo-list">
-        <div class="skeleton" style="height:44px;"></div>
-        <div class="skeleton" style="height:44px;"></div>
-        <div class="skeleton" style="height:44px;"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- アジェンダ ウィジェット -->
-  <div class="widget" id="widget-agenda">
+  <!-- スケジュール ウィジェット -->
+  <div class="widget active fade-in" id="widget-schedule">
     <div class="card">
       <div class="card-title">📅 本日のアジェンダ
         <button class="btn btn-ghost btn-sm" onclick="openEventModal('create')" style="margin-left:auto">+ 予定</button>
@@ -999,6 +928,11 @@ body {
     <div class="card">
       <div class="card-title">💡 集中タイム提案</div>
       <div class="focus-suggestion" id="focus-suggestion">AI提案を読み込み中...</div>
+    </div>
+    <!-- 日報セクション -->
+    <div class="card">
+      <div class="card-title">📝 日報</div>
+      <button class="btn btn-primary" onclick="switchWidget('journal', document.querySelector('[data-widget=journal]'))">日報を書く</button>
     </div>
   </div>
 
@@ -1034,12 +968,6 @@ body {
       </div>
       <textarea class="journal-textarea" id="journal-textarea" placeholder="日報を入力するか、AI自動生成ボタンで生成できます…"></textarea>
       <div style="font-size:12px;color:var(--text-sub);margin-bottom:16px;">📅 日付: <input type="date" id="journal-date" style="border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);padding:4px 8px;border-radius:6px;font-size:12px;"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">📚 過去の日報</div>
-      <div class="journal-list" id="journal-list">
-        <div class="skeleton" style="height:54px;"></div>
-      </div>
     </div>
   </div>
 
@@ -1133,12 +1061,8 @@ body {
       <div class="settings-section">
         <div class="settings-section-title">ウィジェット表示</div>
         <div class="settings-row">
-          <div><div class="label">Smart ToDo</div></div>
-          <label class="toggle-switch"><input type="checkbox" id="sw-todos" checked onchange="toggleWidgetVisibility('todos', this.checked)"><span class="toggle-slider"></span></label>
-        </div>
-        <div class="settings-row">
-          <div><div class="label">アジェンダ</div></div>
-          <label class="toggle-switch"><input type="checkbox" id="sw-agenda" checked onchange="toggleWidgetVisibility('agenda', this.checked)"><span class="toggle-slider"></span></label>
+          <div><div class="label">スケジュール</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="sw-schedule" checked onchange="toggleWidgetVisibility('schedule', this.checked)"><span class="toggle-slider"></span></label>
         </div>
         <div class="settings-row">
           <div><div class="label">AI壁打ち</div></div>
@@ -1165,13 +1089,6 @@ body {
       <!-- AI機能 ON/OFF -->
       <div class="settings-section">
         <div class="settings-section-title">AI機能</div>
-        <div class="settings-row">
-          <div>
-            <div class="label">ToDo優先度・工数の自動判定</div>
-            <div class="desc">追加時にGeminiで優先度と工数を自動判定します</div>
-          </div>
-          <label class="toggle-switch"><input type="checkbox" id="ai-todo" checked onchange="saveAiSetting('ai_todo', this.checked)"><span class="toggle-slider"></span></label>
-        </div>
         <div class="settings-row">
           <div>
             <div class="label">集中タイム提案</div>
@@ -1258,27 +1175,12 @@ body {
     </div>
   </div>
 
-  <!-- スクリーンセーバー（ウィジェットとしては空）-->
-  <div class="widget" id="widget-screensaver-widget">
-    <!-- 実際のスクリーンセーバーはオーバーレイ -->
-  </div>
-
 </main>
 
 <!-- =============================================
    FAB ボタン
 ============================================= -->
 <button id="fab" onclick="fabClick()" title="クイック追加">＋</button>
-
-<!-- =============================================
-   スクリーンセーバー オーバーレイ
-============================================= -->
-<div id="screensaver" onclick="stopScreensaver()">
-  <canvas id="ss-canvas"></canvas>
-  <div class="ss-time" id="ss-time">00:00</div>
-  <div class="ss-date" id="ss-date"></div>
-  <div class="ss-hint">クリックまたはキーを押して戻る</div>
-</div>
 
 <!-- =============================================
    構造化出力モーダル
@@ -1290,23 +1192,6 @@ body {
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="copyStructuredOutput()">📋 コピー</button>
       <button class="btn btn-primary" onclick="closeModal('modal-structure')">閉じる</button>
-    </div>
-  </div>
-</div>
-
-<!-- =============================================
-   ToDo追加モーダル（FABから）
-============================================= -->
-<div class="modal-overlay" id="modal-todo">
-  <div class="modal">
-    <div class="modal-title">✅ ToDoを追加</div>
-    <div class="form-group">
-      <label class="form-label">タスク内容</label>
-      <input class="form-input" id="modal-todo-content" type="text" placeholder="タスクを入力…">
-    </div>
-    <div class="modal-btns">
-      <button class="btn btn-ghost" onclick="closeModal('modal-todo')">キャンセル</button>
-      <button class="btn btn-primary" onclick="modalAddTodo()">追加</button>
     </div>
   </div>
 </div>
@@ -1438,7 +1323,7 @@ function saveToken() {
       document.getElementById('main').style.display = '';
       document.getElementById('fab').style.display = '';
       await loadUserSettings();
-      loadTodos();
+      loadAgenda();
       loadAnnouncements();
     } else {
       document.getElementById('token-error').style.display = 'block';
@@ -1517,10 +1402,9 @@ function updateThemeIcon(theme) {
 // =============================================
 // ウィジェット切り替え
 // =============================================
-let activeWidget = 'todos';
+let activeWidget = 'schedule';
 
 function switchWidget(name, el) {
-  if (name === 'screensaver-widget') return;
   document.querySelectorAll('.widget').forEach(w => w.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const w = document.getElementById('widget-' + name);
@@ -1531,9 +1415,8 @@ function switchWidget(name, el) {
   if (dot) dot.classList.remove('show');
 
   // 遅延読み込み
-  if (name === 'todos') loadTodos();
-  if (name === 'agenda') loadAgenda();
-  if (name === 'journal') { loadJournalList(); initJournalDate(); }
+  if (name === 'schedule') loadAgenda();
+  if (name === 'journal') { initJournalDate(); }
   if (name === 'links') loadLinks();
   if (name === 'memos') loadMemos();
   if (name === 'settings') initSettings();
@@ -1554,95 +1437,6 @@ async function loadAnnouncements() {
       ticker.innerHTML = `<div class="ticker-wrap"><div class="ticker-track"><span class="ticker-item">${texts}</span><span class="ticker-item">${texts}</span></div></div>`;
     }
   } catch {}
-}
-
-// =============================================
-// ToDo
-// =============================================
-let allTodos = [];
-
-async function loadTodos() {
-  try {
-    const r = await api('/api/todos');
-    allTodos = r.todos || [];
-    renderTodos(allTodos);
-  } catch (e) {
-    document.getElementById('todo-list').innerHTML = `<div style="color:#ef4444;font-size:13px;">読み込みエラー: ${e.message}</div>`;
-  }
-}
-
-function renderTodos(todos) {
-  const el = document.getElementById('todo-list');
-  if (!todos.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-sub);padding:20px;font-size:14px;">ToDoはありません 🎉</div>';
-    return;
-  }
-  el.innerHTML = todos.map(t => `
-    <div class="todo-item ${t.completed ? 'done' : ''} fade-in" id="todo-${t.row}">
-      <div class="todo-check ${t.completed ? 'checked' : ''}" onclick="toggleTodo(${t.row}, ${t.completed})">
-        ${t.completed ? '✓' : ''}
-      </div>
-      <span class="todo-text">${escHtml(t.content)}</span>
-      ${t.priority ? `<span class="priority-badge priority-${t.priority}">${t.priority}</span>` : ''}
-      ${t.effort ? `<span class="effort-badge">工数:${t.effort}</span>` : ''}
-      <button class="todo-del-btn" onclick="deleteTodo(${t.row})" title="削除">×</button>
-    </div>
-  `).join('');
-}
-
-async function addTodo() {
-  const input = document.getElementById('todo-input');
-  const content = input.value.trim();
-  if (!content) return;
-
-  const tmpEl = document.createElement('div');
-  tmpEl.className = 'todo-item';
-  tmpEl.innerHTML = `<div class="skeleton" style="height:20px;flex:1;"></div><span style="font-size:12px;color:var(--text-sub)">AI判定中…</span>`;
-  document.getElementById('todo-list').prepend(tmpEl);
-  input.value = '';
-
-  try {
-    // AI分析（設定ON時のみ）
-    let priority = '中', effort = '中';
-    if (localStorage.getItem('ai_todo') !== 'false') {
-      try {
-        const ai = await api('/api/ai/analyze-todo', {
-          method: 'POST',
-          body: JSON.stringify({ content }),
-        });
-        priority = ai.priority || '中';
-        effort = ai.effort || '中';
-      } catch {}
-    }
-
-    await api('/api/todos', {
-      method: 'POST',
-      body: JSON.stringify({ content, priority, effort }),
-    });
-    showDot('todos');
-    await loadTodos();
-  } catch (e) {
-    tmpEl.remove();
-    alert('追加エラー: ' + e.message);
-  }
-}
-
-async function toggleTodo(row, currentCompleted) {
-  try {
-    await api('/api/todos/' + row, {
-      method: 'PUT',
-      body: JSON.stringify({ completed: !currentCompleted }),
-    });
-    await loadTodos();
-  } catch (e) { alert('更新エラー: ' + e.message); }
-}
-
-async function deleteTodo(row) {
-  try {
-    await api('/api/todos/' + row, { method: 'DELETE' });
-    document.getElementById(`todo-${row}`)?.remove();
-    allTodos = allTodos.filter(t => t.row !== row);
-  } catch (e) { alert('削除エラー: ' + e.message); }
 }
 
 // =============================================
@@ -1976,7 +1770,6 @@ async function sendChat() {
 
   // コンテキスト構築
   const context = {
-    todos: allTodos.filter(t => !t.completed).map(t => t.content),
     agenda: agendaData.map(e => `${e.time} ${e.title}`),
   };
 
@@ -2023,7 +1816,6 @@ async function generateJournal() {
   textarea.value = 'AI生成中…';
   textarea.disabled = true;
 
-  const completedTodos = allTodos.filter(t => t.completed).map(t => t.content);
   const agendaList = agendaData.map(e => `${e.time} ${e.title}`);
 
   // localStorage からコメントを収集
@@ -2038,7 +1830,7 @@ async function generateJournal() {
     const data = await api('/api/ai/generate-journal', {
       method: 'POST',
       body: JSON.stringify({
-        completed_todos: completedTodos,
+        completed_todos: [],
         agenda: agendaList,
         task_comments: taskComments,
         event_comments: eventComments,
@@ -2153,11 +1945,13 @@ async function loadLinks() {
 function renderCategories() {
   const cats = ['all', ...new Set(allLinks.map(l => l.category).filter(Boolean))];
   const el = document.getElementById('links-categories');
-  el.innerHTML = cats.map(c => `
-    <span class="cat-badge ${c === activeCategory ? 'active' : ''}" data-cat="${c}" onclick="filterLinks('${c}', this)">
+  el.innerHTML = cats.map(c => {
+    const color = c !== 'all' ? getTagColor(c) : null;
+    const style = (color && c !== activeCategory) ? `style="background:${color.bg};color:${color.text};border-color:${color.bg}"` : '';
+    return `<span class="cat-badge ${c === activeCategory ? 'active' : ''}" data-cat="${c}" onclick="filterLinks('${c}', this)" ${style}>
       ${c === 'all' ? 'すべて' : c}
-    </span>
-  `).join('');
+    </span>`;
+  }).join('');
 }
 
 function filterLinks(cat, el) {
@@ -2165,6 +1959,25 @@ function filterLinks(cat, el) {
   document.querySelectorAll('.cat-badge').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   renderLinks();
+}
+
+const TAG_COLORS = {
+  '仕事': { bg: '#dbeafe', text: '#1d4ed8' },
+  'ツール': { bg: '#d1fae5', text: '#047857' },
+  '参考': { bg: '#fce7f3', text: '#be185d' },
+  'その他': { bg: '#ffedd5', text: '#c2410c' },
+};
+const TAG_PALETTE = [
+  { bg: '#cffafe', text: '#0e7490' },
+  { bg: '#fef9c3', text: '#a16207' },
+  { bg: '#ede9fe', text: '#6d28d9' },
+  { bg: '#fee2e2', text: '#dc2626' },
+];
+function getTagColor(tag) {
+  if (TAG_COLORS[tag]) return TAG_COLORS[tag];
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+  return TAG_PALETTE[Math.abs(hash) % TAG_PALETTE.length];
 }
 
 function renderLinks() {
@@ -2179,7 +1992,7 @@ function renderLinks() {
       <a href="${escHtml(l.url)}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">
         <div class="link-title">${escHtml(l.title)}</div>
         <div class="link-url">${escHtml(l.url)}</div>
-        ${l.category ? `<span class="link-cat">${escHtml(l.category)}</span>` : ''}
+        ${l.category ? `<span class="link-cat" style="background:${getTagColor(l.category).bg};color:${getTagColor(l.category).text}">${escHtml(l.category)}</span>` : ''}
       </a>
       <button class="link-del" onclick="deleteLink(${l.row})" title="削除">×</button>
     </div>
@@ -2284,14 +2097,20 @@ function updatePomodoroDisplay() {
 function playBeep() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 1.5);
+    const freqs = [880, 1046];
+    for (let i = 0; i < 3; i++) {
+      const startTime = ctx.currentTime + i * 0.5;
+      freqs.forEach(freq => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.5, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 2);
+        osc.start(startTime);
+        osc.stop(startTime + 2);
+      });
+    }
   } catch {}
 }
 
@@ -2299,80 +2118,15 @@ function playBeep() {
 pomodoroReset();
 
 // =============================================
-// スクリーンセーバー
-// =============================================
-let ssAnimFrame = null;
-let ssStars = [];
-
-function startScreensaver() {
-  const ss = document.getElementById('screensaver');
-  ss.style.display = 'flex';
-  initStars();
-  ssAnimate();
-  updateSsTime();
-  document.addEventListener('keydown', stopScreensaver, { once: true });
-}
-
-function stopScreensaver() {
-  const ss = document.getElementById('screensaver');
-  ss.style.display = 'none';
-  cancelAnimationFrame(ssAnimFrame);
-}
-
-function initStars() {
-  const canvas = document.getElementById('ss-canvas');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  ssStars = Array.from({ length: 200 }, () => ({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    r: Math.random() * 2,
-    speed: Math.random() * 0.5 + 0.1,
-    opacity: Math.random(),
-  }));
-}
-
-function ssAnimate() {
-  const canvas = document.getElementById('ss-canvas');
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ssStars.forEach(s => {
-    s.opacity += (Math.random() - 0.5) * 0.05;
-    s.opacity = Math.max(0.1, Math.min(1, s.opacity));
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${s.opacity})`;
-    ctx.fill();
-    s.y += s.speed;
-    if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
-  });
-
-  ssAnimFrame = requestAnimationFrame(ssAnimate);
-  updateSsTime();
-}
-
-function updateSsTime() {
-  const now = new Date();
-  const h = now.getHours().toString().padStart(2, '0');
-  const m = now.getMinutes().toString().padStart(2, '0');
-  document.getElementById('ss-time').textContent = `${h}:${m}`;
-  const days = ['日', '月', '火', '水', '木', '金', '土'];
-  document.getElementById('ss-date').textContent =
-    `${now.getFullYear()}.${(now.getMonth()+1).toString().padStart(2,'0')}.${now.getDate().toString().padStart(2,'0')} (${days[now.getDay()]})`;
-}
-
-// =============================================
 // FAB
 // =============================================
 function fabClick() {
-  if (activeWidget === 'todos') {
-    openModal('modal-todo');
-  } else if (activeWidget === 'links') {
+  if (activeWidget === 'links') {
     document.getElementById('link-title').focus();
-  } else {
-    openModal('modal-todo');
+  } else if (activeWidget === 'schedule') {
+    openEventModal('create');
+  } else if (activeWidget === 'memos') {
+    document.getElementById('memo-input').focus();
   }
 }
 
@@ -2382,36 +2136,6 @@ function openModal(id) {
 
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
-}
-
-async function modalAddTodo() {
-  const content = document.getElementById('modal-todo-content').value.trim();
-  if (!content) return;
-  document.getElementById('modal-todo-content').value = '';
-  closeModal('modal-todo');
-  switchWidget('todos', document.querySelector('[data-widget="todos"]'));
-  await addTodoWithContent(content);
-}
-
-async function addTodoWithContent(content) {
-  try {
-    let priority = '中', effort = '中';
-    if (localStorage.getItem('ai_todo') !== 'false') {
-      try {
-        const ai = await api('/api/ai/analyze-todo', {
-          method: 'POST',
-          body: JSON.stringify({ content }),
-        });
-        priority = ai.priority || '中';
-        effort = ai.effort || '中';
-      } catch {}
-    }
-    await api('/api/todos', {
-      method: 'POST',
-      body: JSON.stringify({ content, priority, effort }),
-    });
-    await loadTodos();
-  } catch (e) { alert('追加エラー: ' + e.message); }
 }
 
 // モーダル外クリックで閉じる
@@ -2492,7 +2216,7 @@ async function deleteMemo(row) {
 // =============================================
 // 設定
 // =============================================
-const WIDGET_IDS = ['todos', 'agenda', 'chat', 'journal', 'links', 'pomodoro', 'memos'];
+const WIDGET_IDS = ['schedule', 'chat', 'journal', 'links', 'pomodoro', 'memos'];
 
 async function initSettings() {
   // ウィジェット表示トグルを LocalStorage から復元
@@ -2771,7 +2495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch {}
     await loadUserSettings();
     applyWidgetVisibility();
-    loadTodos();
+    loadAgenda();
     loadAnnouncements();
     initJournalDate();
   } else {

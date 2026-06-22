@@ -9,7 +9,11 @@
  *   NOTIFY_EMAIL         : メール通知先（任意）
  *
  * 受け付けるアクション:
- *   processMeeting  : 音声ファイルをAI処理して議事録・タスク・Mermaidを生成
+ *   processMeeting    : 音声ファイルをAI処理して全項目を一括生成（後方互換）
+ *   transcribeAudio   : 音声ファイル → 文字起こし
+ *   generateMinutes   : 文字起こし → 議事録JSON
+ *   generateFlowchart : 文字起こし → Mermaidコード
+ *   generateGantt     : 文字起こし → ガントJSON
  */
 
 function doGet(e) {
@@ -44,6 +48,18 @@ function handleRequest(e, method) {
     switch (action) {
       case 'processMeeting':
         result = processMeeting(params.meeting_id, params.drive_file_id, params.prev_meeting_id);
+        break;
+      case 'transcribeAudio':
+        result = transcribeAudio(params.meeting_id, params.drive_file_id);
+        break;
+      case 'generateMinutes':
+        result = generateMinutesFromTranscript(params.meeting_id, params.prev_meeting_id);
+        break;
+      case 'generateFlowchart':
+        result = generateFlowchartFromTranscript(params.meeting_id);
+        break;
+      case 'generateGantt':
+        result = generateGanttFromTranscript(params.meeting_id);
         break;
       default:
         return respond({ ok: false, error: 'Unknown action: ' + action });

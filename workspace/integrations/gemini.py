@@ -10,7 +10,7 @@ from google import genai
 
 from core.logger import log_error
 
-_MODEL_NAME = "gemini-2.0-flash"
+_MODEL_NAME = "gemini-2.5-flash"
 
 
 def _get_client() -> genai.Client:
