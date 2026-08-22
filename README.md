@@ -94,17 +94,16 @@ clasp push
 ## ファイル構成
 
 ```
-Vecel公開/Workspace/
+02_開発/Vercel/Workspace/
 ├── workspace/              ← メインアプリ（Vercel + GAS）
-│   ├── workspace/          ← Vercel フロントエンド
+│   ├── main.py             ← FastAPI エントリーポイント
+│   ├── templates/          ← フロントエンド
 │   ├── gas/                ← GAS スクリプト
-│   ├── .vercel/
-│   ├── .env                ← 環境変数（git除外）
-│   └── .env.local          ← ローカル設定
+│   ├── .env.example        ← 環境変数の雛形
+│   └── start_local.sh      ← ローカル起動
 ├── cross-trade/            ← クロス取引管理
 ├── app-kanri/              ← アプリ管理
-├── 議事録からタスク管理/
-└── Vercel化マニュアル.md
+└── 議事録からタスク管理/
 ```
 
 ---
@@ -114,7 +113,7 @@ Vecel公開/Workspace/
 ### Vercel の API を確認
 ```bash
 cd workspace
-cat main.py | grep "@app.post\|@app.get"
+rg '@app\.(post|get)' main.py routers/
 ```
 
 ### GAS の受け付けアクション一覧
@@ -125,7 +124,7 @@ grep "case '" Code.gs | cut -d"'" -f2 | sort -u
 
 ### スプレッドシート ID 確認
 ```bash
-cat workspace/.env | grep SPREADSHEET_ID
+rg -q '^SPREADSHEET_ID=.+$' workspace/.env && echo "SPREADSHEET_ID: 設定済み" || echo "SPREADSHEET_ID: 未設定"
 ```
 
 ---
@@ -137,4 +136,3 @@ cat workspace/.env | grep SPREADSHEET_ID
 | GAS呼び出しが失敗 | API_SECRET_TOKEN が一致していない | `.env` を確認 |
 | シート読み込みが遅い | キャッシュ期限切れ（30秒） | 数秒待機してリトライ |
 | Gemini API エラー | GEMINI_API_KEY が無効 | API キーを更新 |
-

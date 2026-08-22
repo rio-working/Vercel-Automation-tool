@@ -1295,7 +1295,6 @@ body {
 // 設定・初期化
 // =============================================
 let API_TOKEN = localStorage.getItem('api_token') || '';
-let GAS_URL = '';
 let journalFolderId = '';
 let coachPrompt = '';
 let selectedTaskListIds = null; // null=未取得（全表示）, 配列=絞り込み対象
@@ -1317,7 +1316,6 @@ function saveToken() {
       API_TOKEN = val;
       localStorage.setItem('api_token', val);
       HEADERS['X-Api-Token'] = val;
-      GAS_URL = config.gas_url || '';
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('sidebar').style.display = '';
       document.getElementById('main').style.display = '';
@@ -2490,9 +2488,19 @@ function escHtml(str) {
 document.addEventListener('DOMContentLoaded', async () => {
   if (API_TOKEN) {
     try {
-      const config = await fetch('/api/config', { headers: HEADERS }).then(r => r.json());
-      GAS_URL = config.gas_url || '';
-    } catch {}
+      const response = await fetch('/api/config', { headers: HEADERS });
+      if (!response.ok) throw new Error('認証に失敗しました');
+    } catch {
+      API_TOKEN = '';
+      localStorage.removeItem('api_token');
+      delete HEADERS['X-Api-Token'];
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('sidebar').style.display = 'none';
+      document.getElementById('main').style.display = 'none';
+      document.getElementById('fab').style.display = 'none';
+      setTimeout(() => document.getElementById('token-input')?.focus(), 100);
+      return;
+    }
     await loadUserSettings();
     applyWidgetVisibility();
     loadAgenda();

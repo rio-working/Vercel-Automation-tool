@@ -68,13 +68,12 @@ async def gas_proxy(request: Request, _token=Depends(verify_token)):
 
 # ── 設定 API ─────────────────────────────────────────────────
 @app.get("/api/config")
-def get_config():
+def get_config(_token=Depends(verify_token)):
     return {
         "app_name":  APP_CONFIG["app_name"],
         "icon":      APP_CONFIG["icon"],
         "version":   APP_CONFIG["version"],
         "auth_mode": APP_CONFIG["auth"]["mode"],
-        "gas_url":   os.environ.get("GAS_WEB_APP_URL", ""),
     }
 
 
