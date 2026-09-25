@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Workspace Quick Add",
+  "version": "1.0",
+  "description": "Google タスク・カレンダーにワンクリック登録",
+  "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Workspace Quick Add"
+  },
+  "options_page": "options.html"
+}

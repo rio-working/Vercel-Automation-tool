@@ -4,7 +4,7 @@
  * 処理フロー:
  *   1. Drive API で音声ファイルをダウンロード
  *   2. Base64エンコードして inline_data で Gemini に送信（Files API不使用）
- *   3. gemini-2.0-flash で一括生成
+ *   3. gemini-2.5-flash で一括生成
  *   4. 結果をシートに保存 → 通知
  *
  * ※ GAS は Content-Length を含むヘッダー名を全てブロックするため

@@ -122,7 +122,7 @@ URLは Vercel でホスティングし、ブラウザからアクセスするシ
 ## ローカル起動
 
 ```bash
-cd Vecel公開/Workspace
+cd "02_開発/Vercel/Workspace/workspace"
 pip install -r requirements.txt
 uvicorn main:app --reload
 # → http://localhost:8000 でアクセス
