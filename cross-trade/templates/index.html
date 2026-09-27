@@ -329,7 +329,13 @@
 
       <div class="form-group">
         <label>優待内容</label>
-        <input type="text" id="f-benefit" placeholder="例: お買物優待券 500円x6枚">
+        <div class="choice-buttons" id="f-benefit-buttons">
+          <button type="button" class="choice-btn" data-value="優待品" onclick="selectChoice('f', 'benefit', this)">優待品</button>
+          <button type="button" class="choice-btn" data-value="優待券" onclick="selectChoice('f', 'benefit', this)">優待券</button>
+          <button type="button" class="choice-btn" data-value="クオ" onclick="selectChoice('f', 'benefit', this)">クオ</button>
+          <button type="button" class="choice-btn" data-value="" onclick="selectChoice('f', 'benefit', this)">その他</button>
+        </div>
+        <input type="text" id="f-benefit" placeholder="例: お買物優待券 500円x6枚" oninput="onManualInput('f', 'benefit')">
       </div>
 
       <div class="row">
@@ -517,12 +523,12 @@
           <div class="form-group">
             <label>優待内容</label>
             <div class="choice-buttons" id="m-benefit-buttons">
-              <button type="button" class="choice-btn" data-value="優待品" onclick="selectChoice('benefit', this)">優待品</button>
-              <button type="button" class="choice-btn" data-value="優待券" onclick="selectChoice('benefit', this)">優待券</button>
-              <button type="button" class="choice-btn" data-value="クオ" onclick="selectChoice('benefit', this)">クオ</button>
-              <button type="button" class="choice-btn" data-value="" onclick="selectChoice('benefit', this)">その他</button>
+              <button type="button" class="choice-btn" data-value="優待品" onclick="selectChoice('m', 'benefit', this)">優待品</button>
+              <button type="button" class="choice-btn" data-value="優待券" onclick="selectChoice('m', 'benefit', this)">優待券</button>
+              <button type="button" class="choice-btn" data-value="クオ" onclick="selectChoice('m', 'benefit', this)">クオ</button>
+              <button type="button" class="choice-btn" data-value="" onclick="selectChoice('m', 'benefit', this)">その他</button>
             </div>
-            <input type="text" id="m-benefit" placeholder="内容を入力" oninput="onManualInput('benefit')">
+            <input type="text" id="m-benefit" placeholder="内容を入力" oninput="onManualInput('m', 'benefit')">
           </div>
         </div>
 
@@ -540,11 +546,11 @@
             <div class="form-group">
               <label>証券会社</label>
               <div class="choice-buttons" id="m-broker-buttons">
-                <button type="button" class="choice-btn" data-value="日興証券" onclick="selectChoice('broker', this)">日興</button>
-                <button type="button" class="choice-btn" data-value="カブコム証券" onclick="selectChoice('broker', this)">カブコム</button>
-                <button type="button" class="choice-btn" data-value="" onclick="selectChoice('broker', this)">その他</button>
+                <button type="button" class="choice-btn" data-value="日興証券" onclick="selectChoice('m', 'broker', this)">日興</button>
+                <button type="button" class="choice-btn" data-value="カブコム証券" onclick="selectChoice('m', 'broker', this)">カブコム</button>
+                <button type="button" class="choice-btn" data-value="" onclick="selectChoice('m', 'broker', this)">その他</button>
               </div>
-              <input type="text" id="m-broker" placeholder="証券会社名を入力" oninput="onManualInput('broker')">
+              <input type="text" id="m-broker" placeholder="証券会社名を入力" oninput="onManualInput('m', 'broker')">
             </div>
           </div>
           <div class="row">
@@ -882,7 +888,7 @@
       document.getElementById('m-name').value = trade['銘柄'] || '';
       document.getElementById('m-kenri-month').value = trade['権利月'] || '';
       document.getElementById('m-benefit').value = trade['優待内容'] || '';
-      syncChoiceButtons('benefit', trade['優待内容'] || '');
+      syncChoiceButtons('m', 'benefit', trade['優待内容'] || '');
       document.getElementById('m-benefit-value').value = trade['優待価値'] || '';
       document.getElementById('m-trade-date').value = trade['取得日'] ? formatDate(trade['取得日']) : '';
       document.getElementById('m-qty').value = trade['株数'] || '';
@@ -891,7 +897,7 @@
       document.getElementById('m-genriki').value = trade['現引'] || 0;
       document.getElementById('m-genwatashi').value = trade['現渡'] || 0;
       document.getElementById('m-broker').value = trade['証券会社'] || '';
-      syncChoiceButtons('broker', trade['証券会社'] || '');
+      syncChoiceButtons('m', 'broker', trade['証券会社'] || '');
       document.getElementById('m-note').value = trade['備考'] || '';
       document.getElementById('m-settled').checked = trade['決済済み'] === true;
 
@@ -908,22 +914,22 @@
       if (event.target === document.getElementById('modal-overlay')) closeModal();
     }
 
-    function selectChoice(type, btn) {
-      const container = document.getElementById('m-' + type + '-buttons');
+    function selectChoice(prefix, type, btn) {
+      const container = document.getElementById(prefix + '-' + type + '-buttons');
       container.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      const input = document.getElementById('m-' + type);
+      const input = document.getElementById(prefix + '-' + type);
       const value = btn.dataset.value;
       input.value = value;
       if (value === '') input.focus();
     }
 
-    function onManualInput(type) {
-      syncChoiceButtons(type, document.getElementById('m-' + type).value);
+    function onManualInput(prefix, type) {
+      syncChoiceButtons(prefix, type, document.getElementById(prefix + '-' + type).value);
     }
 
-    function syncChoiceButtons(type, value) {
-      const container = document.getElementById('m-' + type + '-buttons');
+    function syncChoiceButtons(prefix, type, value) {
+      const container = document.getElementById(prefix + '-' + type + '-buttons');
       const buttons = Array.from(container.querySelectorAll('.choice-btn'));
       const matchBtn = buttons.find(b => b.dataset.value === value && value !== '');
       buttons.forEach(b => b.classList.remove('active'));
@@ -1131,6 +1137,7 @@
       ['f-code','f-kenri-month','f-benefit','f-benefit-value','f-note'].forEach(id => {
         document.getElementById(id).value = '';
       });
+      document.querySelectorAll('#f-benefit-buttons .choice-btn').forEach(b => b.classList.remove('active'));
     }
 
     // ------------------------------------------------------------------
