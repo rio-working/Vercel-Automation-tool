@@ -378,7 +378,7 @@
     <div class="month-filter">
       <label>並び順:</label>
       <select id="sort-select" onchange="onSortChange(this.value)">
-        <option value="default">登録順</option>
+        <option value="default">証券コード順</option>
         <option value="benefit-desc">優待価値が高い順</option>
         <option value="benefit-asc">優待価値が低い順</option>
       </select>
@@ -740,7 +740,11 @@
       if (currentSort === 'benefit-asc') {
         return [...trades].sort((a, b) => (a['優待価値'] || 0) - (b['優待価値'] || 0));
       }
-      return trades;
+      return [...trades].sort((a, b) => {
+        const codeDiff = (parseInt(a['コード']) || 0) - (parseInt(b['コード']) || 0);
+        if (codeDiff !== 0) return codeDiff;
+        return (a['権利月'] || 0) - (b['権利月'] || 0);
+      });
     }
 
     function renderTradeList() {
