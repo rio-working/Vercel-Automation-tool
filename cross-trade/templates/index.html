@@ -156,6 +156,19 @@
     .status-acquired { background: #fef3c7; color: #d97706; }
     .status-settled { background: #dcfce7; color: #16a34a; }
 
+    .list-header-row { display: flex; align-items: flex-start; gap: 8px; }
+    .refresh-btn {
+      background: white; border: 1.5px solid #e2e8f0; border-radius: 10px;
+      width: 40px; height: 40px; cursor: pointer; color: #4a86e8;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07); flex-shrink: 0;
+    }
+    .refresh-btn:active { transform: scale(0.95); }
+    .benefit-missing {
+      display: inline-block; background: #fee2e2; color: #dc2626;
+      padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 700; margin-left: 6px;
+    }
+
     .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
     .summary-item { background: white; border-radius: 10px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
     .summary-label { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
@@ -327,7 +340,12 @@
 
   <!-- 取引一覧タブ -->
   <div id="v-list" class="view">
-    <div class="summary-grid" id="summary-cards"></div>
+    <div class="list-header-row">
+      <div class="summary-grid" id="summary-cards" style="flex:1"></div>
+      <button class="refresh-btn" onclick="loadData()" title="最新データを取得">
+        <span class="material-icons">refresh</span>
+      </button>
+    </div>
 
     <div class="search-box">
       <span class="material-icons">search</span>
@@ -350,11 +368,28 @@
       </select>
     </div>
 
+    <div class="month-filter">
+      <label>証券会社:</label>
+      <select id="broker-select" onchange="onBrokerFilterChange(this.value)">
+        <option value="all">すべて</option>
+      </select>
+    </div>
+
+    <div class="month-filter">
+      <label>並び順:</label>
+      <select id="sort-select" onchange="onSortChange(this.value)">
+        <option value="default">登録順</option>
+        <option value="benefit-desc">優待価値が高い順</option>
+        <option value="benefit-asc">優待価値が低い順</option>
+      </select>
+    </div>
+
     <div class="filter-bar">
       <button class="filter-btn active" onclick="filterTrades('all', this)">全て</button>
       <button class="filter-btn" onclick="filterTrades('none', this)">未取得</button>
       <button class="filter-btn" onclick="filterTrades('acquired', this)">取得済</button>
       <button class="filter-btn" onclick="filterTrades('settled', this)">決済済</button>
+      <button class="filter-btn" onclick="filterTrades('no-benefit', this)">内容未設定</button>
     </div>
 
     <div id="trade-list"></div>
@@ -542,6 +577,8 @@
     let allTrades = [];
     let currentFilter = 'all';
     let currentMonthFilter = 'all';
+    let currentBrokerFilter = 'all';
+    let currentSort = 'default';
     let currentSearchQuery = '';
     let selectedYear = new Date().getFullYear();
     let settings = {};
@@ -577,8 +614,19 @@
       api('/api/settings').then(s => {
         settings = s || {};
         populateBrokerSelect('m-broker');
+        populateBrokerFilterSelect();
         fillSettingsForm();
       }).catch(err => console.error('設定取得エラー:', err));
+    }
+
+    // NOTE: settings values come from this app's own Settings sheet (edited only via
+    // the 設定 tab in this same app), not third-party input, and are passed through
+    // escapeHtml() before insertion, consistent with the existing populateBrokerSelect().
+    function populateBrokerFilterSelect() {
+      const select = document.getElementById('broker-select');
+      const brokers = settings['証券会社一覧'] || [];
+      select.innerHTML = '<option value="all">すべて</option>' +
+        brokers.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
     }
 
     function fillSettingsForm() {
@@ -675,6 +723,26 @@
       renderTradeList();
     }
 
+    function onBrokerFilterChange(broker) {
+      currentBrokerFilter = broker;
+      renderTradeList();
+    }
+
+    function onSortChange(sort) {
+      currentSort = sort;
+      renderTradeList();
+    }
+
+    function sortTrades(trades) {
+      if (currentSort === 'benefit-desc') {
+        return [...trades].sort((a, b) => (b['優待価値'] || 0) - (a['優待価値'] || 0));
+      }
+      if (currentSort === 'benefit-asc') {
+        return [...trades].sort((a, b) => (a['優待価値'] || 0) - (b['優待価値'] || 0));
+      }
+      return trades;
+    }
+
     function renderTradeList() {
       let trades = allTrades;
 
@@ -691,13 +759,21 @@
         trades = trades.filter(t => t['権利月'] === month);
       }
 
+      if (currentBrokerFilter !== 'all') {
+        trades = trades.filter(t => t['証券会社'] === currentBrokerFilter);
+      }
+
       if (currentFilter === 'none') {
         trades = trades.filter(t => !t['取得日']);
       } else if (currentFilter === 'acquired') {
         trades = trades.filter(t => t['取得日'] && t['決済済み'] !== true);
       } else if (currentFilter === 'settled') {
         trades = trades.filter(t => t['決済済み'] === true);
+      } else if (currentFilter === 'no-benefit') {
+        trades = trades.filter(t => !t['優待内容']);
       }
+
+      trades = sortTrades(trades);
 
       if (trades.length === 0) {
         document.getElementById('trade-list').innerHTML = `
@@ -760,7 +836,7 @@
           </span>
         </div>
         <div class="trade-row-3">
-          <span>${escapeHtml(t['優待内容'] || '-')} / ${t['株数'] || '-'}株</span>
+          <span>${escapeHtml(t['優待内容'] || '-')} / ${t['株数'] || '-'}株${!t['優待内容'] ? '<span class="benefit-missing">内容未設定</span>' : ''}</span>
           ${t['証券会社'] ? `<span>${escapeHtml(t['証券会社'])}</span>` : ''}
         </div>
       </div>`;

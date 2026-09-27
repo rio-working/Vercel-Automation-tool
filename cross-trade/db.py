@@ -121,6 +121,21 @@ def get_trades(settled=None, broker=None, start_date=None, end_date=None):
 
 def add_master(data: dict) -> dict:
     ws = _get_ws("TradeData")
+    code = str(data.get("コード", ""))
+    kenri_month = data.get("権利月") or ""
+
+    existing_rows = ws.get_all_values()
+    for row in existing_rows[1:]:
+        if not row or not row[0]:
+            continue
+        existing_code = str(row[COL["CODE"] - 1]) if len(row) >= COL["CODE"] else ""
+        existing_month = str(row[COL["KENRI_MONTH"] - 1]) if len(row) >= COL["KENRI_MONTH"] else ""
+        if existing_code == code and existing_month == str(kenri_month):
+            return {
+                "success": False,
+                "message": f"銘柄コード{code}（{kenri_month}月）は既に登録されています",
+            }
+
     benefit_value = _to_float(data.get("優待価値"))
 
     row = [
